@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
-import { Eye } from "lucide-react";
+import { Archive, Check, Eye, RotateCcw } from "lucide-react";
 import { money, date, quoteCode, statusLabel } from "@/lib/format";
-import { adminApi, type AdminData, type Quote, type Claim } from "./api";
+import { adminApi, type AdminData, type Claim } from "./api";
 import { Modal } from "./modal";
-export const quoteStatusLabels: Record<string, string> = { pending: "Por atender", contacted: "Atendida", closed: "Cerrada" };
+export const quoteStatusLabels: Record<string, string> = { pending: "Por revisar", contacted: "Atendida", closed: "Archivada" };
+const quoteTabs = { pending: "Por revisar", contacted: "Atendidas", closed: "Archivadas" } as const;
+type QuoteStatus = keyof typeof quoteTabs;
 
 export function SalesManager({
   data,
@@ -18,94 +20,100 @@ export function SalesManager({
   notify: (s: string) => void;
 }) {
   const [search, setSearch] = useState("");
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>("pending");
+  const [saving, setSaving] = useState(false);
   const [claim, setClaim] = useState<Claim | null>(null);
+  const quote = data.quotes.find(q => q.id === quoteId);
+  const filteredQuotes = data.quotes.filter(q => q.status === quoteStatus &&
+    `${quoteCode(q.code)} ${q.items.map(i => i.name).join(" ")}`
+      .toLowerCase().includes(search.trim().toLowerCase()));
+
+  async function changeQuote(id: string, status: QuoteStatus) {
+    setSaving(true);
+    try {
+      await adminApi("quotes", { id, status });
+      await refresh();
+      setQuoteId(null);
+      notify(`Cotización ${status === "closed" ? "archivada" : status === "contacted" ? "atendida" : "reabierta"}`);
+    } catch (error) {
+      notify((error as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <>
       {tab === "cotizaciones" && (
         <>
-          <div className="toolbar">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar código o producto…"
-              aria-label="Buscar cotizaciones"
-            />
-            <span>Una cotización no reserva inventario</span>
-          </div>
-          <div className="admin-panel">
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Código</th>
-                    <th>Productos</th>
-                    <th>Subtotal</th>
-                    <th>Fecha</th>
-                    <th>Estado</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.quotes
-                    .filter((q) =>
-                      `${quoteCode(q.code)} ${q.items.map((i) => i.name).join(" ")}`
-                        .toLowerCase()
-                        .includes(search.toLowerCase()),
-                    )
-                    .map((q) => (
-                      <tr key={q.id}>
-                        <td>
-                          <strong>{quoteCode(q.code)}</strong>
-                        </td>
-                        <td>
-                          {q.items.length} producto
-                          {q.items.length > 1 ? "s" : ""}
-                          <small>{q.items[0]?.name}</small>
-                        </td>
-                        <td>{money(q.subtotal)}</td>
-                        <td>{date(q.created_at)}</td>
-                        <td>
-                          <select
-                            aria-label={`Estado de ${quoteCode(q.code)}`}
-                            value={q.status}
-                            onChange={async (e) => {
-                              try {
-                                await adminApi("quotes", {
-                                  id: q.id,
-                                  status: e.target.value,
-                                });
-                                await refresh();
-                                notify("Estado actualizado");
-                              } catch (e) {
-                                notify((e as Error).message);
-                              }
-                            }}
-                          >
-                            {["pending", "contacted", "closed"].map((s) => (
-                              <option key={s} value={s}>
-                                {quoteStatusLabels[s]}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <button
-                            className="icon-button"
-                            onClick={() => setQuote(q)}
-                            aria-label={`Ver ${quoteCode(q.code)}`}
-                          >
-                            <Eye size={15} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+          <div className="admin-panel quote-panel">
+            <div className="quote-toolbar">
+              <div>
+                <h2>Bandeja de cotizaciones</h2>
+                <p>Cada solicitud se guarda al preparar el mensaje. La atención se realiza en WhatsApp.</p>
+              </div>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar código o producto…" aria-label="Buscar cotizaciones" />
             </div>
-            {!data.quotes.length && (
+            <div className="quote-tabs" aria-label="Estado de las cotizaciones" role="group">
+              {(Object.keys(quoteTabs) as QuoteStatus[]).map(status => (
+                <button key={status} aria-pressed={quoteStatus === status} onClick={() => setQuoteStatus(status)}>
+                  {quoteTabs[status]} <span>{data.quotes.filter(q => q.status === status).length}</span>
+                </button>
+              ))}
+            </div>
+            {filteredQuotes.length > 0 ? (
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Productos</th>
+                      <th>Subtotal</th>
+                      <th>Fecha</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredQuotes.map(q => (
+                        <tr key={q.id}>
+                          <td>
+                            <strong>{quoteCode(q.code)}</strong>
+                          </td>
+                          <td>
+                            {q.items.length} producto
+                            {q.items.length > 1 ? "s" : ""}
+                            <small>{q.items[0]?.name}</small>
+                          </td>
+                          <td>{money(q.subtotal)}</td>
+                          <td>{date(q.created_at)}</td>
+                          <td>
+                            <span className={`badge ${q.status}`}>{quoteStatusLabels[q.status]}</span>
+                          </td>
+                          <td>
+                            <div className="quote-actions">
+                              <button className="icon-button" onClick={() => setQuoteId(q.id)}
+                                aria-label={`Ver ${quoteCode(q.code)}`} title="Ver cotización">
+                                <Eye size={16} />
+                              </button>
+                              <button className="btn btn-outline" disabled={saving}
+                                onClick={() => changeQuote(q.id, q.status === "closed" ? "pending" : "closed")}>
+                                {q.status === "closed" ? <><RotateCcw size={15} /> Reabrir</> : <><Archive size={15} /> Archivar</>}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
               <div className="admin-empty">
-                Las solicitudes del catálogo y del carrito aparecerán aquí.
+                {search.trim() ? "No hay coincidencias en esta bandeja."
+                  : quoteStatus === "pending" ? "No hay cotizaciones por revisar."
+                    : quoteStatus === "contacted" ? "Todavía no hay cotizaciones atendidas."
+                      : "Todavía no hay cotizaciones archivadas."}
               </div>
             )}
           </div>
@@ -165,7 +173,7 @@ export function SalesManager({
       {quote && (
         <Modal
           title={`Cotización ${quoteCode(quote.code)}`}
-          onClose={() => setQuote(null)}
+          onClose={() => setQuoteId(null)}
         >
           <div className="info-box">
             Abrir WhatsApp no confirma que el cliente envió el mensaje. Estado:{" "}
@@ -191,6 +199,17 @@ export function SalesManager({
             {date(quote.created_at)} · Inventario sin reservar
           </p>
           <p className="info-box">Usa el código para identificar la consulta en WhatsApp. La compra y el pago se confirman en el chat.</p>
+          <div className="quote-actions">
+            {quote.status === "pending" && (
+              <button className="btn btn-primary" disabled={saving} onClick={() => changeQuote(quote.id, "contacted")}>
+                <Check size={16} /> Marcar atendida
+              </button>
+            )}
+            <button className="btn btn-outline" disabled={saving}
+              onClick={() => changeQuote(quote.id, quote.status === "closed" ? "pending" : "closed")}>
+              {quote.status === "closed" ? <><RotateCcw size={16} /> Reabrir</> : <><Archive size={16} /> Archivar</>}
+            </button>
+          </div>
         </Modal>
       )}
       {claim && (

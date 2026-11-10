@@ -108,7 +108,7 @@ export async function seed(demo=true) {
       "Leytech Select",
       "accesorios",
       12990,
-      "hub.jpg",
+      "hub-illustration.svg",
       "Más conexiones, menos límites.",
       "Expande la conectividad de tu laptop desde un solo puerto USB-C.",
       {

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useCart } from "./cart-provider";
 import { money } from "@/lib/format";
+import { announceUpdate } from "./live-updates";
 export function CartPage({ revision }: { revision: string }) {
   const cart = useCart();
   const [busy, setBusy] = useState(""),
@@ -74,6 +75,7 @@ export function CartPage({ revision }: { revision: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setQuote(data);
+      announceUpdate("admin");
     } catch (e) {
       setError((e as Error).message);
       await validate().catch(() => {});

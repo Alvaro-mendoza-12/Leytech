@@ -1,3 +1,5 @@
+import { announceUpdate } from "../live-updates";
+
 export async function adminApi(path: string, data: unknown) {
   const response = await fetch(`/api/admin/${path}`, {
     method: "POST",
@@ -6,6 +8,8 @@ export async function adminApi(path: string, data: unknown) {
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "No se pudo guardar.");
+  const storefront = ["products", "brands", "categories", "inventory", "settings"].includes(path);
+  announceUpdate(storefront ? "both" : "admin");
   return result;
 }
 export type AdminData = {

@@ -78,6 +78,7 @@ export function Dashboard() {
     [section, setSection] = useState("resumen"),
     [tab, setTab] = useState(""),
     [error, setError] = useState(""),
+    [syncStatus, setSyncStatus] = useState<"connecting" | "current" | "retrying">("connecting"),
     [loading, setLoading] = useState(true);
   const router = useRouter(),
     { setNotice } = useCart();
@@ -91,12 +92,13 @@ export function Dashboard() {
       router.push("/admin/login");
       return;
     }
-    if (res.status === 204) return;
+    if (res.status === 204) { setSyncStatus("current"); return; }
     const result = await res.json();
     if (!res.ok) throw new Error(result.error);
     if (request === requestSequence.current && !signal?.aborted) {
       setData(result);
       setError("");
+      setSyncStatus("current");
     }
   }, [router]);
   useEffect(() => {
@@ -104,7 +106,10 @@ export function Dashboard() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [refresh]);
-  useVisiblePolling((signal) => refresh(data?.revision, signal), !!data);
+  useVisiblePolling(async signal => {
+    try { await refresh(data?.revision, signal); }
+    catch { setSyncStatus("retrying"); }
+  }, "admin", !!data);
   function navigate(id: string, target?: string) {
     setSection(id);
     setTab(target || menu.find((m) => m.id === id)?.tabs[0] || "");
@@ -204,10 +209,9 @@ export function Dashboard() {
               </h1>
               <p>{subtitles[section]}</p>
             </div>
-            <span className="badge">
-              {data?.settings.demoMode
-                ? "Modo de demostración"
-                : "Panel privado"}
+            <span className={`panel-sync panel-sync-${syncStatus}`}>
+              <span aria-hidden="true" />
+              {syncStatus === "current" ? "Datos al día" : syncStatus === "retrying" ? "Reconectando…" : "Conectando…"}
             </span>
           </div>
           {loading ? (
@@ -256,13 +260,13 @@ export function Dashboard() {
                         {
                           title: "Solicitudes atendidas",
                           value: data.quotes.filter(
-                            (q) => q.status !== "pending",
+                            (q) => q.status === "contacted",
                           ).length,
-                          note: "Marcadas como atendidas o cerradas",
+                          note: "Marcadas como atendidas",
                           icon: ShoppingBag,
                         },
                         {
-                          title: "Cotizaciones por atender",
+                          title: "Cotizaciones por revisar",
                           value: data.quotes.filter(
                             (q) => q.status === "pending",
                           ).length,
@@ -316,7 +320,7 @@ export function Dashboard() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {data.quotes.slice(0, 5).map((quote) => (
+                                {data.quotes.filter(quote => quote.status !== "closed").slice(0, 5).map((quote) => (
                                   <tr key={quote.id}>
                                     <td>
                                       <strong>{quoteCode(quote.code)}</strong>
@@ -333,9 +337,9 @@ export function Dashboard() {
                               </tbody>
                             </table>
                           </div>
-                          {!data.quotes.length && (
+                          {!data.quotes.some(quote => quote.status !== "closed") && (
                             <div className="admin-empty">
-                              Las consultas que se preparen desde el catálogo aparecerán aquí.
+                              Aquí verás las solicitudes que aún estén abiertas.
                             </div>
                           )}
                         </div>

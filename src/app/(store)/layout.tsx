@@ -32,7 +32,7 @@ export default async function StoreLayout({
       style={{ "--blue": s.primaryColor } as React.CSSProperties}
     >
       <StoreSync revision={revision} />
-      <StoreHeader settings={s} categories={c} />
+      <StoreHeader settings={s} categories={c} revision={revision} />
       <main id="contenido">{children}</main>
       <StoreFooter settings={s} />
       <a

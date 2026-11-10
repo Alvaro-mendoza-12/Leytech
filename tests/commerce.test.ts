@@ -244,6 +244,10 @@ test("búsqueda por nombre, marca y categoría con consultas parametrizadas", as
   assert.equal((await products({ q: "aceptacion" })).total, 1);
   assert.equal((await products({ q: "Prueba" })).total, 1);
   assert.ok((await products({ q: "audio" })).total >= 2);
+  const ssd = await products({ q: "SSD 1 TB", limit: 6 });
+  assert.deepEqual(ssd.products.map(p => p.slug), ["ssd-portatil-pocket-1-tb"]);
+  assert.equal((await products({ q: ssd.products[0].variants[0].sku })).total, 1);
+  assert.equal((await products({ q: "%_" })).total, 0);
   assert.equal((await products({ q: "'; DROP TABLE products; --" })).total, 0);
 });
 test("filtros de categoría, color y rango deben coincidir en una misma variante", async () => {
@@ -313,6 +317,14 @@ test("cotización: registra código y mensaje WhatsApp sin reservar stock", asyn
   assert.equal(before.reserved, after.reserved);
   assert.equal(before.stock, after.stock);
   assert.notEqual(await readRevision("admin"), adminRevision);
+  assert.equal(await readRevision("storefront"), publicRevision);
+});
+test("cotización: un borrado directo cambia la revisión del panel", async () => {
+  const quote = await createQuote({ items: [{ variantId: "demo-1-v1", quantity: 1 }] });
+  const revision = await readRevision("admin");
+  const publicRevision = await readRevision("storefront");
+  await db.query("DELETE FROM quotes WHERE code=$1", [Number(quote.code.slice(4))]);
+  assert.notEqual(await readRevision("admin"), revision);
   assert.equal(await readRevision("storefront"), publicRevision);
 });
 test("cotización: obliga a revisar cambios de precio", async () => {

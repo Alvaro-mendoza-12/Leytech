@@ -54,6 +54,7 @@ export async function products(
     page?: number;
     all?: boolean;
     featured?: boolean;
+    limit?: number;
   } = {},
 ) {
   const params: unknown[] = options.all ? [] : [catalogVisibility(await settings())];
@@ -64,12 +65,16 @@ export async function products(
     params.push(value);
     where.push(sql.replaceAll("?", `$${params.length}`));
   };
-  if (options.q)
+  const terms = options.q?.trim().slice(0, 120).split(/\s+/).filter(Boolean).slice(0, 8) || [];
+  for (const term of terms) {
     add(
-      `translate(lower(concat_ws(' ', p.name, p.brand, p.summary, c.name)), 'áéíóúü', 'aeiouu')
-       LIKE translate(lower(?), 'áéíóúü', 'aeiouu')`,
-      `%${options.q.slice(0, 120)}%`,
+      `(strpos(translate(lower(concat_ws(' ', p.name, p.brand, p.summary, p.description, p.specifications::text, c.name)), 'áéíóúü', 'aeiouu'),
+               translate(lower(?), 'áéíóúü', 'aeiouu')) > 0
+        OR EXISTS (SELECT 1 FROM variants search_variant WHERE search_variant.product_id=p.id AND search_variant.active=true
+                   AND strpos(lower(search_variant.sku), lower(?)) > 0))`,
+      term,
     );
+  }
   if (options.category) add("c.slug=?", options.category);
   if (options.brand) add("p.brand=?", options.brand);
   const variantFilters = ["v.product_id=p.id", "v.active=true"];
@@ -99,7 +104,7 @@ export async function products(
         : options.sort === "newest"
           ? "p.created_at DESC"
           : "p.featured DESC,p.created_at DESC";
-  const limit = options.all ? 1000 : 12;
+  const limit = options.all ? 1000 : Math.max(1, Math.min(12, Math.floor(options.limit || 12)));
   const page = Math.max(1, Math.min(Math.floor(options.page || 1), 10000));
   const { rows } = await db.query<Product & { min_price: number }>(
     `SELECT p.*, c.name AS category_name,c.slug AS category_slug,(SELECT min(v.price) FROM variants v WHERE v.product_id=p.id AND v.active=true) AS min_price ${base} ORDER BY ${order} LIMIT ${limit} OFFSET ${(page - 1) * limit}`,

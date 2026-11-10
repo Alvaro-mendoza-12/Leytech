@@ -58,6 +58,15 @@ async function route(
     if (resource === "store/revision" && method === "GET") {
       return ok({ revision: await readRevision("storefront") });
     }
+    if (resource === "catalog/suggestions" && method === "GET") {
+      const q = (new URL(request.url).searchParams.get("q") || "").trim().slice(0, 120);
+      if (q.length < 2) return ok({ items: [] });
+      const result = await products({ q, limit: 6 });
+      return ok({ items: result.products.map(p => ({
+        slug: p.slug, name: p.name, category: p.category_name,
+        image: p.images[0] || "/images/placeholder.svg", price: p.min_price, sample: p.is_demo,
+      })) });
+    }
     if (resource === "catalog" && method === "GET") {
       const url = new URL(request.url);
       return ok(
@@ -206,7 +215,7 @@ async function route(
         categories(true),
         config,
         online ? db.query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 200") : { rows: [] },
-        db.query("SELECT * FROM quotes ORDER BY created_at DESC LIMIT 200"),
+        db.query("SELECT * FROM quotes ORDER BY created_at DESC, id LIMIT 200"),
         db.query(
           "SELECT m.*,v.sku FROM stock_movements m JOIN variants v ON v.id=m.variant_id ORDER BY m.created_at DESC LIMIT 100",
         ),
@@ -290,10 +299,11 @@ async function route(
         })
         .parse(await jsonBody(request));
       await db.transaction(async (tx) => {
-        await tx.query("UPDATE quotes SET status=$1 WHERE id=$2", [
+        const result = await tx.query("UPDATE quotes SET status=$1 WHERE id=$2 RETURNING id", [
           d.status,
           d.id,
         ]);
+        if (!result.rows.length) throw new AppError("La solicitud ya no está disponible.", 404);
         await audit(admin.id, "quote.status", d.id, { status: d.status }, tx);
       });
       return ok({ success: true });

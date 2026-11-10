@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  Search,
   MessageCircle,
   ArrowUpRight,
   Mail,
@@ -15,12 +14,15 @@ import type { Category, StoreSettings } from "@/lib/types";
 import { CartLink } from "./store-ui";
 import { CategoryIcon } from "./icons";
 import { BrandLogo } from "./brand-logo";
+import { CatalogSearch } from "./catalog-search";
 export function StoreHeader({
   settings: s,
   categories,
+  revision,
 }: {
   settings: StoreSettings;
   categories: Category[];
+  revision: string;
 }) {
   return (
     <>
@@ -43,16 +45,7 @@ export function StoreHeader({
       <header className="store-header">
         <div className="container header-main">
           <BrandLogo name={s.name} src={s.logoUrl} />
-          <form action="/catalogo" className="search-bar" role="search">
-            <Search size={20} />
-            <input
-              type="search"
-              name="q"
-              placeholder="¿Qué estás buscando hoy?"
-              aria-label="Buscar productos"
-            />
-            <button type="submit">Buscar</button>
-          </form>
+          <CatalogSearch revision={revision} />
           <a
             href={`https://wa.me/${s.whatsapp}`}
             target="_blank"

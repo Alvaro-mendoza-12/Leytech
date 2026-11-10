@@ -12,6 +12,6 @@ export function StoreSync({ revision }: { revision: string }) {
     if (!signal.aborted && typeof next.revision === "string" && next.revision !== revision) {
       router.refresh();
     }
-  });
+  }, "storefront");
   return null;
 }
