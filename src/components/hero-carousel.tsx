@@ -17,7 +17,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [transition, setTransition] = useState<{ current: string; previous?: string; direction: number }>({
     current: slides[0].id, direction: 1,
   });
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [onScreen, setOnScreen] = useState(false);
   const region = useRef<HTMLElement>(null);
@@ -32,7 +32,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const respectMotion = () => { if (media.matches) setPlaying(false); };
+    const respectMotion = () => setPlaying(!media.matches);
     respectMotion();
     media.addEventListener("change", respectMotion);
     return () => media.removeEventListener("change", respectMotion);
@@ -51,7 +51,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       if (document.visibilityState === "visible") {
         setTransition({ current: next.id, previous: current.id, direction: 1 });
       }
-    }, 6500);
+    }, 4500);
     return () => window.clearInterval(timer);
   }, [current.id, next.id, rotating]);
 
@@ -64,9 +64,6 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   return (
     <section className="hero-visual" ref={region} aria-label="Selección de Leytech"
       aria-roledescription={canRotate ? "carrusel" : undefined}
-      onPointerEnter={event => { if (event.pointerType === "mouse") setHovered(true); }}
-      onPointerLeave={() => setHovered(false)}
-      onTouchStart={() => setPlaying(false)}
       onFocusCapture={event => {
         if (event.target.matches(":focus-visible") && !event.currentTarget.contains(event.relatedTarget)) setPlaying(false);
       }}>
@@ -86,7 +83,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
         <button type="button" aria-label="Producto anterior" onClick={() => move(-1)}><ChevronLeft size={18} /></button>
         <button type="button" aria-label="Producto siguiente" onClick={() => move(1)}><ChevronRight size={18} /></button>
       </div>}
-      <div className="hero-product-label" aria-live={rotating ? "off" : "polite"}>
+      <div className="hero-product-label" aria-live={rotating ? "off" : "polite"}
+        onPointerEnter={event => { if (event.pointerType === "mouse") setHovered(true); }}
+        onPointerLeave={() => setHovered(false)}>
         <span>{current.label}</span>
         <Link href={current.href}>{current.name} <ArrowUpRight size={16} /></Link>
       </div>

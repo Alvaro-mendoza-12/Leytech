@@ -1141,6 +1141,7 @@ small {
   box-shadow: 0 5px 20px #153d2830;
   border-radius: 50%;
   z-index: 40;
+  transition: transform .2s ease, box-shadow .2s ease;
 }
 .toast {
   position: fixed;
@@ -4129,22 +4130,26 @@ td select {
 .quote-receipt { margin-top: 14px; text-align: left; }
 .quote-receipt > strong { display: inline-flex; align-items: center; gap: 6px; }
 .quote-receipt-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.floating-whatsapp::before,
 .floating-whatsapp::after {
   content: "";
   position: absolute;
-  inset: -3px;
+  inset: -2px;
   border-radius: 50%;
   border: 2px solid #5da5f2;
   pointer-events: none;
-  animation: whatsapp-ring 1.6s ease-out 2;
+  animation: whatsapp-ring 6s ease-out infinite;
   opacity: 0;
 }
+.floating-whatsapp::after { animation-delay: .6s; }
 @keyframes whatsapp-ring {
-  20% { opacity: .7; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.22); }
+  0% { opacity: 0; transform: scale(1); }
+  6% { opacity: .65; }
+  32%, 100% { opacity: 0; transform: scale(1.4); }
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .floating-whatsapp:hover { transform: translateY(-3px); box-shadow: 0 8px 24px #153d2840; }
   .gaming-card:hover img { transform: scale(1.065); opacity: .69; }
   .product-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px #11234215; border-color: #b8cff6; }
   .product-card:hover .product-photo img { transform: scale(1.045); }
@@ -4209,7 +4214,7 @@ td select {
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-slide.leaving { visibility: hidden; }
-  * {
+  *, *::before, *::after {
     scroll-behavior: auto !important;
     animation: none !important;
     transition: none !important;
