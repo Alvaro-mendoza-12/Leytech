@@ -29,6 +29,7 @@ import { settingsSchema, claimSchema } from "@/lib/validation";
 import { saveProduct, updateOrder } from "@/lib/admin";
 import type { Admin, Order } from "@/lib/types";
 import { uploadObject } from "@/lib/storage";
+import { markChanged, readRevision } from "@/lib/revisions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,6 +48,9 @@ async function route(
       return ok({ received: true });
     }
     if (method !== "GET") checkOrigin(request);
+    if (resource === "store/revision" && method === "GET") {
+      return ok({ revision: await readRevision("storefront") });
+    }
     if (resource === "catalog" && method === "GET") {
       const url = new URL(request.url);
       return ok(
@@ -112,23 +116,27 @@ async function route(
     if (resource === "claims" && method === "POST") {
       await rateLimit(request, "claims", 5, 3600);
       const data = claimSchema.parse(await jsonBody(request));
-      const { rows } = await db.query<{ code: string }>(
-        "INSERT INTO claims(id,customer,type,description,request) VALUES($1,$2,$3,$4,$5) RETURNING code",
-        [
-          crypto.randomUUID(),
-          JSON.stringify({
-            name: data.name,
-            email: data.email,
-            phone: data.phone,
-            document: data.document,
-            address: data.address,
-          }),
-          data.type,
-          data.description,
-          data.request,
-        ],
-      );
-      return ok({ code: `REC-${String(rows[0].code).padStart(5, "0")}` }, 201);
+      const code = await db.transaction(async (tx) => {
+        const { rows } = await tx.query<{ code: string }>(
+          "INSERT INTO claims(id,customer,type,description,request) VALUES($1,$2,$3,$4,$5) RETURNING code",
+          [
+            crypto.randomUUID(),
+            JSON.stringify({
+              name: data.name,
+              email: data.email,
+              phone: data.phone,
+              document: data.document,
+              address: data.address,
+            }),
+            data.type,
+            data.description,
+            data.request,
+          ],
+        );
+        await markChanged(tx);
+        return rows[0].code;
+      });
+      return ok({ code: `REC-${String(code).padStart(5, "0")}` }, 201);
     }
     if (resource === "auth/login" && method === "POST") {
       const data = z
@@ -187,6 +195,10 @@ async function route(
       throw new AppError("Ruta no encontrada.", 404);
     if (resource === "admin/data" && method === "GET") {
       await expireOrders();
+      const revision = await readRevision("admin");
+      if (new URL(request.url).searchParams.get("revision") === revision) {
+        return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+      }
       const result = await Promise.all([
         products({ all: true }),
         categories(true),
@@ -204,6 +216,7 @@ async function route(
         db.query("SELECT * FROM payments ORDER BY updated_at DESC LIMIT 100"),
       ]);
       return ok({
+        revision,
         admin,
         products: result[0].products,
         categories: result[1],
@@ -284,11 +297,10 @@ async function route(
           status: z.enum(["pending", "resolved"]),
         })
         .parse(await jsonBody(request));
-      await db.query("UPDATE claims SET status=$1 WHERE id=$2", [
-        d.status,
-        d.id,
-      ]);
-      await audit(admin.id, "claim.status", d.id, d);
+      await db.transaction(async (tx) => {
+        await tx.query("UPDATE claims SET status=$1 WHERE id=$2", [d.status, d.id]);
+        await audit(admin.id, "claim.status", d.id, d, tx);
+      });
       return ok({ success: true });
     }
     if (resource === "admin/orders" && method === "POST") {
@@ -329,11 +341,13 @@ async function route(
           next = parents.find((p) => p.id === next)?.parent_id || null;
         }
       }
-      await db.query(
-        "INSERT INTO categories(id,name,slug,active,parent_id) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,slug=EXCLUDED.slug,active=EXCLUDED.active,parent_id=EXCLUDED.parent_id",
-        [id, d.name, d.slug, d.active, d.parent_id],
-      );
-      await audit(admin.id, "category.saved", id);
+      await db.transaction(async (tx) => {
+        await tx.query(
+          "INSERT INTO categories(id,name,slug,active,parent_id) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,slug=EXCLUDED.slug,active=EXCLUDED.active,parent_id=EXCLUDED.parent_id",
+          [id, d.name, d.slug, d.active, d.parent_id],
+        );
+        await audit(admin.id, "category.saved", id, {}, tx);
+      });
       return ok({ success: true });
     }
     if (resource === "admin/password" && method === "POST") {

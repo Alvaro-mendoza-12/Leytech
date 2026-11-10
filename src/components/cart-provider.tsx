@@ -24,7 +24,7 @@ type Context = {
   update: (id: string, quantity: number) => void;
   remove: (id: string) => void;
   clear: () => void;
-  replace: (lines: SnapshotLine[]) => void;
+  replace: (lines: SnapshotLine[], expected?: StoredLine[]) => void;
   notice: string;
   setNotice: (s: string) => void;
 };
@@ -101,9 +101,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
           : i,
       ),
     );
-  const replace = (lines: SnapshotLine[]) =>
-    setItems(
-      lines.map((i) => ({
+  const replace = (lines: SnapshotLine[], expected?: StoredLine[]) =>
+    setItems((current) => {
+      if (expected && current !== expected) return current;
+      return lines.map((i) => ({
         variantId: i.variantId,
         quantity: i.quantity,
         price: i.price,
@@ -112,8 +113,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         image: i.image,
         slug: i.slug,
         max: i.available,
-      })),
-    );
+      }));
+    });
   return (
     <CartContext.Provider
       value={{

@@ -7,6 +7,7 @@ import {
 import { db, type Queryable } from "./db";
 import type { Admin } from "./types";
 import {trustedOrigins} from './site';
+import { markChanged } from "./revisions";
 export class AppError extends Error {
   constructor(
     message: string,
@@ -78,6 +79,7 @@ export async function audit(
     "INSERT INTO audit_log(id,admin_id,action,entity_id,detail) VALUES($1,$2,$3,$4,$5)",
     [crypto.randomUUID(), adminId, action, entityId, JSON.stringify(detail)],
   );
+  await markChanged(q, /^(product|brand|category|inventory|settings|order)\./.test(action));
 }
 export async function jsonBody(request: Request) {
   const reader = request.body?.getReader();

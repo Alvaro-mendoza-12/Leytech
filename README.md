@@ -20,6 +20,8 @@ El acceso inicial de producción está en el archivo local privado `.data/produc
 
 El pago, el costo de envío y el plazo se acuerdan por WhatsApp. La web no solicita tarjetas ni requiere una pasarela de pagos. Las licencias digitales se entregan manualmente.
 
+La tienda y el panel comprueban cambios cada 10 segundos mientras la pestaña está visible. Al guardar productos, precios, stock o marca, la tienda abierta se actualiza sin recargar manualmente. Las solicitudes nuevas aparecen en el panel automáticamente. Cambia o restaura el logo desde **Configuración → Negocio**.
+
 El propietario cargará su catálogo real. Los ejemplos siguen como borradores editables y no representan inventario a la venta.
 
 ## Desarrollo local

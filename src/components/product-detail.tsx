@@ -29,14 +29,15 @@ export function ProductDetail({
       p.variants[0]?.id,
   );
   const v = p.variants.find((v) => v.id === variantId) || p.variants[0];
-  const [quantity, setQuantity] = useState(1),
+  const [requestedQuantity, setQuantity] = useState(1),
     [imageIndex, setImageIndex] = useState(0),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
-    [quote, setQuote] = useState<{ code: string; url: string } | null>(null);
+    [quote, setQuote] = useState<{ code: string; url: string; variantId: string; price: number; quantity: number } | null>(null);
   const cart = useCart();
   if (!v) return <p>Este producto no tiene variantes publicadas.</p>;
   const available = v.stock - v.reserved;
+  const quantity = Math.max(1, Math.min(requestedQuantity, available, 99));
   async function quoteProduct() {
     setLoading(true);
     setError("");
@@ -50,7 +51,7 @@ export function ProductDetail({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setQuote(data);
+      setQuote({ code: data.code, url: data.url, variantId: v.id, price: v.price, quantity });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -145,7 +146,7 @@ export function ProductDetail({
           <div className="purchase-row">
             <div className="quantity">
               <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
                 disabled={quantity <= 1}
                 aria-label="Reducir cantidad"
               >
@@ -168,9 +169,9 @@ export function ProductDetail({
               />
               <button
                 onClick={() =>
-                  setQuantity((q) => Math.min(available, 99, q + 1))
+                  setQuantity(Math.min(available, 99, quantity + 1))
                 }
-                disabled={quantity >= available}
+                disabled={quantity >= Math.min(available, 99)}
                 aria-label="Aumentar cantidad"
               >
                 <Plus size={16} />
@@ -212,7 +213,7 @@ export function ProductDetail({
               {error}
             </p>
           )}
-          {quote && (
+          {quote && quote.variantId === v.id && quote.price === v.price && quote.quantity === quantity && available >= quantity && (
             <div className="success-box" role="status">
               <strong>Cotización {quote.code} registrada</strong>
               <p>Abre WhatsApp para enviar tu consulta a Leytech.</p>

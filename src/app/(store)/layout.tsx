@@ -1,17 +1,37 @@
 import { StoreHeader, StoreFooter } from "@/components/store-shell";
-import { settings, categories } from "@/lib/catalog";
+import { cachedSettings, categories } from "@/lib/catalog";
+import { storefrontRevision } from "@/lib/revisions";
+import { StoreSync } from "@/components/store-sync";
+import type { Metadata, ResolvingMetadata } from "next";
+import { officialIcon, officialLogo } from "@/lib/brand";
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(_props: unknown, parent: ResolvingMetadata): Promise<Metadata> {
+  const [store, metadata] = await Promise.all([cachedSettings(), parent]);
+  return {
+    icons: { icon: store.logoUrl || officialIcon },
+    openGraph: {
+      ...metadata.openGraph,
+      type: "website",
+      title: `${store.name} | ${store.tagline}`,
+      images: [{ url: store.logoUrl || officialLogo, alt: `Logo de ${store.name}` }],
+    },
+  };
+}
+
 export default async function StoreLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [s, c] = await Promise.all([settings(), categories()]);
+  const revision = await storefrontRevision();
+  const [s, c] = await Promise.all([cachedSettings(), categories()]);
   return (
     <div
       className="store-theme"
       style={{ "--blue": s.primaryColor } as React.CSSProperties}
     >
+      <StoreSync revision={revision} />
       <StoreHeader settings={s} categories={c} />
       <main id="contenido">{children}</main>
       <StoreFooter settings={s} />

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useEffectEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -17,34 +17,48 @@ import {
 } from "lucide-react";
 import { useCart } from "./cart-provider";
 import { money } from "@/lib/format";
-export function CartPage() {
+export function CartPage({ revision }: { revision: string }) {
   const cart = useCart();
   const [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
+    [availabilityError, setAvailabilityError] = useState(""),
     [quote, setQuote] = useState<{ code: string; url: string } | null>(null);
-  const validated = useRef(false);
-  async function validate() {
+  async function validate(signal?: AbortSignal) {
+    const items = cart.items;
     const res = await fetch("/api/cart/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: cart.items }),
+      body: JSON.stringify({ items }),
+      signal,
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     const changed = data.items.some(
       (i: { priceChanged: boolean }) => i.priceChanged,
     );
-    cart.replace(data.items);
-    if (changed)
+    if (signal?.aborted) return;
+    cart.replace(data.items, items);
+    setAvailabilityError("");
+    if (changed) {
+      setQuote(null);
       cart.setNotice("Se actualizaron los precios. Revisa el nuevo total.");
-    return !changed;
-  }
-  useEffect(() => {
-    if (cart.ready && cart.items.length && !validated.current) {
-      validated.current = true;
-      validate().catch((e) => setError(e.message));
     }
-  }, [cart.ready]); // Validate saved cart once on entry; subsequent actions revalidate on the server.
+  }
+  const validateUpdatedCart = useEffectEvent((signal: AbortSignal) => {
+    if (!cart.items.length) return;
+    validate(signal).catch((e) => {
+      if (!signal.aborted) {
+        setQuote(null);
+        setAvailabilityError(e.message);
+      }
+    });
+  });
+  useEffect(() => {
+    if (!cart.ready) return;
+    const controller = new AbortController();
+    validateUpdatedCart(controller.signal);
+    return () => controller.abort();
+  }, [cart.ready, revision]);
   async function getQuote() {
     setBusy("quote");
     setError("");
@@ -103,9 +117,9 @@ export function CartPage() {
           <ArrowLeft size={15} /> Seguir explorando
         </Link>
       </div>
-      {error && (
+          {(error || availabilityError) && (
         <div className="error-box" role="alert">
-          {error}
+              {error || availabilityError}
           <button
             className="text-link"
             onClick={() => {

@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { db } from "./db";
 import { AppError, hash } from "./security";
 import { commitStock, releaseReservation } from "./commerce";
+import { markChanged } from "./revisions";
 import type { Order } from "./types";
 
 export function verifyWebhook(
@@ -210,6 +211,7 @@ export async function applyVerifiedPayment(payment: VerifiedPayment) {
         [payment.status === "refunded" ? "refunded" : "review", order.id],
       );
     }
+    await markChanged(tx, true);
   });
 }
 export async function handleWebhook(request: Request) {

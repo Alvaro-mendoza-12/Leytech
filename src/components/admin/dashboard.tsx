@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -25,6 +25,7 @@ import { SalesManager } from "./sales-manager";
 import { SettingsManager } from "./settings-manager";
 import type { AdminData } from "./api";
 import { BrandLogo } from "../brand-logo";
+import { useVisiblePolling } from "../use-visible-polling";
 const menu = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard, tabs: [] },
   {
@@ -88,22 +89,30 @@ export function Dashboard() {
     [loading, setLoading] = useState(true);
   const router = useRouter(),
     { setNotice } = useCart();
-  const refresh = useCallback(async () => {
-    const res = await fetch("/api/admin/data", { cache: "no-store" });
+  const requestSequence = useRef(0);
+  const refresh = useCallback(async (revision?: string, signal?: AbortSignal) => {
+    const request = ++requestSequence.current;
+    const path = revision ? `/api/admin/data?revision=${encodeURIComponent(revision)}` : "/api/admin/data";
+    const res = await fetch(path, { cache: "no-store", signal });
+    if (request !== requestSequence.current || signal?.aborted) return;
     if (res.status === 401) {
       router.push("/admin/login");
       return;
     }
+    if (res.status === 204) return;
     const result = await res.json();
     if (!res.ok) throw new Error(result.error);
-    setData(result);
-    setError("");
+    if (request === requestSequence.current && !signal?.aborted) {
+      setData(result);
+      setError("");
+    }
   }, [router]);
   useEffect(() => {
     refresh()
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [refresh]);
+  useVisiblePolling((signal) => refresh(data?.revision, signal), !!data);
   function navigate(id: string, target?: string) {
     setSection(id);
     setTab(target || menu.find((m) => m.id === id)?.tabs[0] || "");

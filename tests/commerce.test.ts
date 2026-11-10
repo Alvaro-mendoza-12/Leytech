@@ -6,6 +6,7 @@ import { db } from "../src/lib/db";
 import { seed } from "../scripts/seed";
 import { products, productBySlug, settings } from "../src/lib/catalog";
 import { saveProduct, updateOrder } from "../src/lib/admin";
+import { readRevision } from "../src/lib/revisions";
 import {
   snapshot,
   createQuote,
@@ -185,6 +186,7 @@ test("JSON: rechaza cuerpos sobredimensionados o inválidos", async () => {
   );
 });
 test("administración: crea y publica un producto con tres colores y stock independiente", async () => {
+  const revision = await readRevision("storefront");
   await saveProduct(
     {
       name: "Mouse de aceptación",
@@ -235,6 +237,7 @@ test("administración: crea y publica un producto con tres colores y stock indep
   assert.ok(p);
   assert.equal(p.variants.length, 3);
   assert.equal(p.variants.find((v) => v.color === "Azul")?.stock, 0);
+  assert.notEqual(await readRevision("storefront"), revision);
 });
 test("búsqueda por nombre, marca y categoría con consultas parametrizadas", async () => {
   assert.equal((await products({ q: "aceptación" })).total, 1);
@@ -289,6 +292,8 @@ test("carrito: rechaza variante agotada, inexistente, cantidades negativas y exc
   );
 });
 test("cotización: registra código y mensaje WhatsApp sin reservar stock", async () => {
+  const adminRevision = await readRevision("admin");
+  const publicRevision = await readRevision("storefront");
   const before = (
     await db.query<Variant>("SELECT * FROM variants WHERE id='demo-1-v1'")
   ).rows[0];
@@ -307,6 +312,8 @@ test("cotización: registra código y mensaje WhatsApp sin reservar stock", asyn
   ).rows[0];
   assert.equal(before.reserved, after.reserved);
   assert.equal(before.stock, after.stock);
+  assert.notEqual(await readRevision("admin"), adminRevision);
+  assert.equal(await readRevision("storefront"), publicRevision);
 });
 test("cotización: obliga a revisar cambios de precio", async () => {
   await assert.rejects(

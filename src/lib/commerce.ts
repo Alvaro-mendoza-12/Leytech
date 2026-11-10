@@ -5,6 +5,7 @@ import { AppError,audit } from "./security";
 import { money, quoteCode } from "./format";
 import type { SnapshotLine, Order, Variant,Admin } from "./types";
 import { randomBytes } from "node:crypto";
+import { markChanged } from "./revisions";
 
 export async function snapshot(
   input: unknown,
@@ -95,6 +96,7 @@ export async function createQuote(input: unknown) {
       "INSERT INTO quotes(id,items,subtotal) VALUES($1,$2,$3) RETURNING code",
       [id, JSON.stringify(items), subtotal],
     );
+    await markChanged(tx);
     const code = quoteCode(rows[0].code);
     return {
       code,
@@ -118,6 +120,7 @@ export async function expireOrders() {
         [o.id],
       );
     }
+    if (expired.length) await markChanged(tx, true);
   });
 }
 export async function releaseReservation(orderId: string, tx: Queryable) {
@@ -249,6 +252,7 @@ export async function createOrder(input: unknown,whatsappContext?:{admin:Admin;q
         [id, item.variantId, item.quantity, item.price],
       );
     if(whatsappContext){await tx.query('UPDATE orders SET quote_id=$1 WHERE id=$2',[whatsappContext.quoteId,id]);await tx.query("UPDATE quotes SET status='contacted' WHERE id=$1",[whatsappContext.quoteId]);await audit(whatsappContext.admin.id,'order.created_from_whatsapp',id,{quoteId:whatsappContext.quoteId,agreement:whatsappContext.agreement},tx);}
+    else await markChanged(tx, true);
     return rows[0];
   });
 }

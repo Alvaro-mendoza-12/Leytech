@@ -5,6 +5,7 @@ import { Plus, ShieldCheck, Save } from "lucide-react";
 import type { StoreSettings } from "@/lib/types";
 import { adminApi, type AdminData } from "./api";
 import { Modal } from "./modal";
+import { LogoImage } from "../brand-logo";
 export function SettingsManager({
   data,
   tab,
@@ -284,26 +285,16 @@ export function SettingsManager({
                         uploadImage(e.target.files?.[0], "logoUrl")
                       }
                     />
+                    <LogoImage src={s.logoUrl} alt={`Logo de ${s.name}`} />
                     {s.logoUrl && (
-                      <>
-                        <img
-                          src={s.logoUrl}
-                          alt="Logo actual"
-                          style={{
-                            maxWidth: 160,
-                            maxHeight: 70,
-                            objectFit: "contain",
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="text-link"
-                          style={{ border: 0, background: "none", padding: 0 }}
-                          onClick={() => update("logoUrl", "")}
-                        >
-                          Usar logo Leytech
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        className="text-link"
+                        style={{ border: 0, background: "none", padding: 0 }}
+                        onClick={() => update("logoUrl", "")}
+                      >
+                        Usar logo Leytech
+                      </button>
                     )}
                   </label>
                   <label>

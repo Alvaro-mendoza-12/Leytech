@@ -1,5 +1,6 @@
 import { db, type Queryable } from "./db";
 import type { Product, Variant, Category, StoreSettings } from "./types";
+import { cache } from "react";
 
 export async function settings(q: Queryable = db) {
   const { rows } = await q.query<{ value: StoreSettings }>(
@@ -15,6 +16,7 @@ export async function settings(q: Queryable = db) {
     heroImage: rows[0].value.heroImage || "/images/hero.jpg",
   };
 }
+export const cachedSettings = cache(() => settings());
 export async function categories(all = false) {
   return (
     await db.query<Category>(

@@ -9,6 +9,7 @@ export async function adminApi(path: string, data: unknown) {
   return result;
 }
 export type AdminData = {
+  revision: string;
   admin: import("@/lib/types").Admin;
   products: import("@/lib/types").Product[];
   categories: import("@/lib/types").Category[];

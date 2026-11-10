@@ -1,6 +1,8 @@
 import { CartPage } from "@/components/cart-page";
+import { storefrontRevision } from "@/lib/revisions";
 export const metadata = { title: "Mi carrito" };
-export default function Page() {
+export default async function Page() {
+  const revision = await storefrontRevision();
   return (
     <div className="container page-container">
       <nav className="breadcrumbs">
@@ -8,7 +10,7 @@ export default function Page() {
         <span>/</span>
         <span>Mi carrito</span>
       </nav>
-      <CartPage />
+      <CartPage revision={revision} />
     </div>
   );
 }
