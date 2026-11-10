@@ -4147,6 +4147,8 @@ td select {
   6% { opacity: .65; }
   32%, 100% { opacity: 0; transform: scale(1.4); }
 }
+.motion-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 5px 0; border: 0; background: transparent; font: inherit; color: inherit; min-height: 32px; }
+.motion-toggle:hover { color: var(--blue); }
 
 @media (hover: hover) and (pointer: fine) {
   .floating-whatsapp:hover { transform: translateY(-3px); box-shadow: 0 8px 24px #153d2840; }
@@ -4212,9 +4214,15 @@ td select {
   .product-buy-box .purchase-row { flex-wrap: wrap; }
   .product-buy-box .purchase-row .btn { flex-basis: 100%; }
 }
+html[data-motion="reduced"] .hero-slide.leaving { visibility: hidden; }
+html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-motion="reduced"] *::after {
+  scroll-behavior: auto !important;
+  animation: none !important;
+  transition: none !important;
+}
 @media (prefers-reduced-motion: reduce) {
-  .hero-slide.leaving { visibility: hidden; }
-  *, *::before, *::after {
+  html:not([data-motion="full"]) .hero-slide.leaving { visibility: hidden; }
+  html:not([data-motion="full"]) *, html:not([data-motion="full"]) *::before, html:not([data-motion="full"]) *::after {
     scroll-behavior: auto !important;
     animation: none !important;
     transition: none !important;

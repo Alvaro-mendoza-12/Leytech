@@ -17,6 +17,7 @@ import { CategoryIcon } from "./icons";
 import { BrandLogo } from "./brand-logo";
 import { CatalogSearch } from "./catalog-search";
 import { officialTikTok } from "@/lib/brand";
+import { MotionToggle } from "./motion-preference";
 export function StoreHeader({
   settings: s,
   categories,
@@ -160,6 +161,7 @@ export function StoreFooter({ settings: s }: { settings: StoreSettings }) {
             <ShieldCheck size={15} /> Tus datos, protegidos
           </span>
           <span>Precios en soles (PEN)</span>
+          <MotionToggle />
           <Link href="/admin">Administración</Link>
         </div>
       </div>

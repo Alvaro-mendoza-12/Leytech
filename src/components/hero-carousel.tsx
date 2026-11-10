@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { useMotionPreference } from "./motion-preference";
 
 export type HeroSlide = {
   id: string;
@@ -17,7 +18,8 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [transition, setTransition] = useState<{ current: string; previous?: string; direction: number }>({
     current: slides[0].id, direction: 1,
   });
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(true);
+  const motion = useMotionPreference();
   const [hovered, setHovered] = useState(false);
   const [onScreen, setOnScreen] = useState(false);
   const region = useRef<HTMLElement>(null);
@@ -26,17 +28,13 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const current = slides[index];
   const previous = foundIndex >= 0 ? slides.find(slide => slide.id === transition.previous) : undefined;
   const canRotate = slides.length > 1;
-  const rotating = canRotate && playing && !hovered && onScreen;
+  const rotating = canRotate && playing && motion.enabled && !hovered && onScreen;
   const next = slides[(index + 1) % slides.length];
   const standby = next.id !== current.id && next.id !== previous?.id ? next : undefined;
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const respectMotion = () => setPlaying(!media.matches);
-    respectMotion();
-    media.addEventListener("change", respectMotion);
-    return () => media.removeEventListener("change", respectMotion);
-  }, []);
+    if (motion.enabled) setPlaying(true);
+  }, [motion.enabled]);
 
   useEffect(() => {
     if (!region.current) return;
@@ -76,9 +74,12 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
         ))}
       </div>
       {canRotate && <div className="hero-controls" role="group" aria-label="Controles de productos">
-        <button type="button" aria-label={playing ? "Pausar rotación" : "Iniciar rotación"}
-          onClick={() => setPlaying(value => !value)}>
-          {playing ? <Pause size={16} /> : <Play size={16} />}
+        <button type="button" aria-label={playing && motion.enabled ? "Pausar rotación" : "Iniciar rotación"}
+          onClick={() => {
+            if (!motion.enabled) { motion.setEnabled(true); setPlaying(true); }
+            else setPlaying(value => !value);
+          }}>
+          {playing && motion.enabled ? <Pause size={16} /> : <Play size={16} />}
         </button>
         <button type="button" aria-label="Producto anterior" onClick={() => move(-1)}><ChevronLeft size={18} /></button>
         <button type="button" aria-label="Producto siguiente" onClick={() => move(1)}><ChevronRight size={18} /></button>
