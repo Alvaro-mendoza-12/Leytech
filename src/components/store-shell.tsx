@@ -9,11 +9,10 @@ import {
   ShieldCheck,
   ShoppingBag,
   BookOpen,
-  Music2,
 } from "lucide-react";
 import type { Category, StoreSettings } from "@/lib/types";
 import { CartLink } from "./store-ui";
-import { CategoryIcon } from "./icons";
+import { CategoryIcon, TikTokIcon, WhatsAppIcon } from "./icons";
 import { BrandLogo } from "./brand-logo";
 import { CatalogSearch } from "./catalog-search";
 import { officialTikTok } from "@/lib/brand";
@@ -114,11 +113,11 @@ export function StoreFooter({ settings: s }: { settings: StoreSettings }) {
             rel="noreferrer"
             href={`https://wa.me/${s.whatsapp}`}
           >
-            <MessageCircle size={18} /> +{s.whatsapp.slice(0, -9)}{" "}
+            <WhatsAppIcon /> +{s.whatsapp.slice(0, -9)}{" "}
             {s.whatsapp.slice(-9).replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3")}
           </a>
           <a href={officialTikTok} target="_blank" rel="noreferrer" className="footer-social">
-            <Music2 size={17} aria-hidden="true" /> TikTok @leytech7 <ArrowUpRight size={13} aria-hidden="true" />
+            <TikTokIcon /> TikTok @leytech7 <ArrowUpRight size={13} aria-hidden="true" />
           </a>
           {s.email && (
             <a href={`mailto:${s.email}`}>

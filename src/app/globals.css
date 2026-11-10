@@ -1099,6 +1099,8 @@ small {
   color: #267849 !important;
   font-weight: 600;
 }
+.social-brand-icon { flex-shrink: 0; }
+.footer-social .social-brand-icon { color: #111; }
 .footer-top .claims-link {
   border: 1px solid #d5deeb;
   border-radius: 6px;
