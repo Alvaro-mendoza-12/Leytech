@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ShoppingCart,
@@ -17,6 +16,7 @@ import { useCart } from "./cart-provider";
 import type { Product } from "@/lib/types";
 import { money } from "@/lib/format";
 import { announceUpdate } from "./live-updates";
+import { ProductGallery } from "./product-gallery";
 export function ProductDetail({
   product: p,
   initialVariant,
@@ -31,20 +31,19 @@ export function ProductDetail({
   );
   const v = p.variants.find((v) => v.id === variantId) || p.variants[0];
   const [requestedQuantity, setQuantity] = useState(1),
-    [imageIndex, setImageIndex] = useState<number | null>(null),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [quote, setQuote] = useState<{ code: string; url: string; variantId: string; price: number; quantity: number } | null>(null);
   const cart = useCart();
   if (!v) return <p>Este producto no tiene variantes publicadas.</p>;
   const available = Math.max(0, v.stock - v.reserved);
-  const quantity = Math.max(1, Math.min(requestedQuantity, available, 99));
   const inCart = cart.items.find(item => item.variantId === v.id)?.quantity ?? 0;
   const remaining = Math.max(0, Math.min(available, 99) - inCart);
-  const canAdd = quantity <= remaining;
+  const maxQuantity = Math.max(1, remaining);
+  const quantity = Math.min(requestedQuantity, maxQuantity);
+  const canAdd = cart.ready && remaining > 0;
   const mainImage = v.image || p.images[0] || "/images/placeholder.svg";
   const images = [...new Set([mainImage, ...p.images])];
-  const shownImage = images[imageIndex ?? 0] || mainImage;
   async function quoteProduct() {
     setLoading(true);
     setError("");
@@ -69,40 +68,7 @@ export function ProductDetail({
   return (
     <>
       <div className="product-detail">
-        <div className="gallery">
-          <div className="gallery-main">
-            <Image
-              src={shownImage}
-              alt={`${p.name}, ${v.name}`}
-              fill
-              priority
-              sizes="(max-width:800px) 100vw,50vw"
-            />
-            {p.is_demo && (
-              <span className="product-badge blue">
-                Producto de muestra
-              </span>
-            )}
-          </div>
-          {images.length > 1 && <div className="thumbnails">
-            {images.map((url, i) => (
-              <button
-                key={url}
-                onClick={() => setImageIndex(i)}
-                className={shownImage === url ? "selected" : ""}
-                aria-pressed={shownImage === url}
-                aria-label={`Ver imagen ${i + 1}`}
-              >
-                <Image src={url} alt="" width={80} height={80} />
-              </button>
-            ))}
-          </div>}
-          <p className="image-note">
-            {p.is_demo
-              ? "Imagen ilustrativa del producto de muestra."
-              : "Las imágenes corresponden al catálogo del negocio."}
-          </p>
-        </div>
+        <ProductGallery key={v.id} images={images} name={`${p.name}, ${v.name}`} sample={p.is_demo} />
         <div className="product-info">
           <Link
             href={`/catalogo?categoria=${p.category_slug}`}
@@ -110,10 +76,12 @@ export function ProductDetail({
           >
             {p.category_name} <ChevronRight size={14} />
           </Link>
-          <p className="product-brand">{p.brand}</p>
+          <div className="product-identity">
+            <span className="product-brand">{p.brand}</span>
+            <span className="sku">SKU {v.sku}</span>
+          </div>
           <h1>{p.name}</h1>
           <p className="product-summary">{p.summary}</p>
-          <p className="sku">SKU: {v.sku}</p>
           <div className="product-buy-box">
             <div className="detail-price">
               <strong>{money(v.price)}</strong>
@@ -136,7 +104,6 @@ export function ProductDetail({
                     onClick={() => {
                       setVariantId(i.id);
                       setQuantity(1);
-                      setImageIndex(null);
                       setError("");
                       setQuote(null);
                     }}
@@ -169,23 +136,23 @@ export function ProductDetail({
                   aria-label="Cantidad"
                   type="number"
                   min={1}
-                  max={Math.max(1, Math.min(available, 99))}
-                  disabled={available === 0}
+                  max={maxQuantity}
+                  disabled={!canAdd}
                   value={quantity}
                   onChange={(e) =>
                     setQuantity(
                       Math.max(
                         1,
-                        Math.min(Math.trunc(Number(e.target.value)) || 1, available, 99),
+                        Math.min(Math.trunc(Number(e.target.value)) || 1, maxQuantity),
                       ),
                     )
                   }
                 />
                 <button
                   onClick={() =>
-                    setQuantity(Math.min(available, 99, quantity + 1))
+                    setQuantity(Math.min(maxQuantity, quantity + 1))
                   }
-                  disabled={quantity >= Math.min(available, 99)}
+                  disabled={!canAdd || quantity >= maxQuantity}
                   aria-label="Aumentar cantidad"
                 >
                   <Plus size={16} />
@@ -211,7 +178,7 @@ export function ProductDetail({
                 <ShoppingCart size={18} /> {available > 0 && remaining === 0 ? "Límite en tu carrito" : "Agregar al carrito"}
               </button>
             </div>
-            {remaining > 0 && !canAdd && (
+            {inCart > 0 && remaining > 0 && (
               <p className="cart-stock-note">Puedes agregar hasta {remaining} más.</p>
             )}
             <button

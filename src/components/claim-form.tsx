@@ -1,6 +1,9 @@
 "use client";
 import { useState } from "react";
+import { announceUpdate } from "./live-updates";
+import { useCart } from "./cart-provider";
 export function ClaimForm() {
+  const { setNotice } = useCart();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [code, setCode] = useState("");
@@ -19,6 +22,7 @@ export function ClaimForm() {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error);
       setCode(result.code);
+      announceUpdate("admin");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -28,14 +32,18 @@ export function ClaimForm() {
   if (code)
     return (
       <div className="success-box" role="status">
-        <h2>Registramos tu solicitud: {code}</h2>
+        <h2>Registramos tu solicitud {code}</h2>
         <p>
           Conserva tu constancia. Puedes guardarla o imprimirla con el botón
           siguiente.
         </p>
-        <button className="btn btn-outline" onClick={() => window.print()}>
-          Imprimir constancia
-        </button>
+        <div className="quote-receipt-actions">
+          <button className="btn btn-outline" onClick={() => window.print()}>Imprimir constancia</button>
+          <button className="btn btn-outline" onClick={async () => {
+            try { await navigator.clipboard.writeText(code); setNotice("Código copiado"); }
+            catch { setNotice(code); }
+          }}>Copiar código</button>
+        </div>
       </div>
     );
   return (

@@ -9,20 +9,24 @@ import {
   ShieldCheck,
   ShoppingBag,
   BookOpen,
+  Music2,
 } from "lucide-react";
 import type { Category, StoreSettings } from "@/lib/types";
 import { CartLink } from "./store-ui";
 import { CategoryIcon } from "./icons";
 import { BrandLogo } from "./brand-logo";
 import { CatalogSearch } from "./catalog-search";
+import { officialTikTok } from "@/lib/brand";
 export function StoreHeader({
   settings: s,
   categories,
   revision,
+  offers,
 }: {
   settings: StoreSettings;
   categories: Category[];
   revision: string;
+  offers: boolean;
 }) {
   return (
     <>
@@ -82,7 +86,7 @@ export function StoreHeader({
           <Link href="/catalogo?sort=newest">Lo nuevo</Link>
           <Link href="/catalogo?categoria=gaming">Zona gaming</Link>
           <Link href="/catalogo?ofertas=1" className="nav-offers">
-            Ofertas <span className="small-dot" />
+            Ofertas {offers && <span className="small-dot" aria-hidden="true" />}
           </Link>
           <Link href="/informacion/ayuda" className="nav-last">
             Te ayudamos a elegir <ArrowUpRight size={14} />
@@ -111,6 +115,9 @@ export function StoreFooter({ settings: s }: { settings: StoreSettings }) {
           >
             <MessageCircle size={18} /> +{s.whatsapp.slice(0, -9)}{" "}
             {s.whatsapp.slice(-9).replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3")}
+          </a>
+          <a href={officialTikTok} target="_blank" rel="noreferrer" className="footer-social">
+            <Music2 size={17} aria-hidden="true" /> TikTok @leytech7 <ArrowUpRight size={13} aria-hidden="true" />
           </a>
           {s.email && (
             <a href={`mailto:${s.email}`}>

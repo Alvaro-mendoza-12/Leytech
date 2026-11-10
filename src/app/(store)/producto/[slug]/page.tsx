@@ -1,20 +1,21 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { productBySlug, products, settings } from "@/lib/catalog";
+import { cachedProductBySlug, products, cachedSettings } from "@/lib/catalog";
 import { ProductDetail } from "@/components/product-detail";
 import { ProductGrid } from "@/components/store-ui";
 import { siteUrl } from "@/lib/site";
+import { publicMetadata } from "@/lib/seo";
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const p = await productBySlug((await params).slug);
-  return {
-    title: p?.seo_title || p?.name || "Producto no encontrado",
-    description: p?.seo_description || p?.summary,
-  };
+  const [p, store] = await Promise.all([cachedProductBySlug((await params).slug), cachedSettings()]);
+  if (!p) return { title: "Producto no encontrado", robots: { index: false, follow: true } };
+  return publicMetadata(store, { path: `/producto/${p.slug}`, title: p.seo_title || p.name,
+    description: p.seo_description || p.summary || `${p.name} de ${p.brand}. Consulta disponibilidad en ${store.name}.`,
+    image: p.images[0], index: !p.is_demo && p.variants.length > 0 });
 }
 export default async function ProductPage({
   params,
@@ -23,16 +24,16 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ variante?: string }>;
 }) {
-  const p = await productBySlug((await params).slug);
+  const p = await cachedProductBySlug((await params).slug);
   if (!p) notFound();
   const [related, s, search] = await Promise.all([
     products({ category: p.category_slug }),
-    settings(),
+    cachedSettings(),
     searchParams,
   ]);
   const origin = siteUrl();
   return (
-    <div className="container page-container">
+    <div className="container page-container product-page">
       <nav aria-label="Ruta de navegación" className="breadcrumbs">
         <Link href="/">Inicio</Link>
         <ChevronRight size={13} />
@@ -41,6 +42,7 @@ export default async function ProductPage({
         <span>{p.name}</span>
       </nav>
       <ProductDetail
+        key={`${p.id}:${search.variante || ""}`}
         product={p}
         initialVariant={
           p.variants.some((v) => v.id === search.variante)
@@ -69,7 +71,7 @@ export default async function ProductPage({
                 availability: `https://schema.org/${v.stock - v.reserved > 0 ? "InStock" : "OutOfStock"}`,
                 url: `${origin}/producto/${p.slug}`,
               })),
-            }).replace(/</g, "\u003c"),
+            }).replace(/</g, "\\u003c"),
           }}
         />
       )}

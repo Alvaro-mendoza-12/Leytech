@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { z, ZodError } from "zod";
@@ -32,6 +32,7 @@ import { uploadObject } from "@/lib/storage";
 import { markChanged, readRevision } from "@/lib/revisions";
 import { addSupabaseAdmin, authenticateAdmin } from "@/lib/panel-auth";
 import { confirmedSupabaseUser, publicSignupDisabled } from "@/lib/supabase-auth";
+import { notifyIndexNow } from "@/lib/indexing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +50,11 @@ async function route(
     const segments = (await context.params).path;
     const resource = segments.join("/");
     const method = request.method;
+    if (segments[0] === "indexnow-key" && segments.length === 2 && method === "GET") {
+      const key = process.env.INDEXNOW_KEY?.trim();
+      if (!key || segments[1] !== key) return new Response(null, { status: 404 });
+      return new Response(key, { headers: { "Content-Type": "text/plain; charset=utf-8", "X-Robots-Tag": "noindex" } });
+    }
     if (resource === "payments/webhook" && method === "POST") {
       await requireOnlineOrders();
       await handleWebhook(request);
@@ -243,8 +249,11 @@ async function route(
         autoSupabaseStaff: result[10].rows.length > 0,
       });
     }
-    if (resource === "admin/products" && method === "POST")
-      return ok(await saveProduct(await jsonBody(request), admin));
+    if (resource === "admin/products" && method === "POST") {
+      const result = await saveProduct(await jsonBody(request), admin);
+      after(() => notifyIndexNow(result.id));
+      return ok(result);
+    }
     if (resource === "admin/quotes/order" && method === "POST") {
       await requireOnlineOrders();
       const order = await createOrderFromQuote(await jsonBody(request), admin);
@@ -316,7 +325,8 @@ async function route(
         })
         .parse(await jsonBody(request));
       await db.transaction(async (tx) => {
-        await tx.query("UPDATE claims SET status=$1 WHERE id=$2", [d.status, d.id]);
+        const updated = await tx.query("UPDATE claims SET status=$1 WHERE id=$2 RETURNING id", [d.status, d.id]);
+        if (!updated.rows.length) throw new AppError("La solicitud ya no está disponible.", 404);
         await audit(admin.id, "claim.status", d.id, d, tx);
       });
       return ok({ success: true });
@@ -463,6 +473,7 @@ async function route(
         ]);
         await audit(admin.id, "settings.updated", "store", {}, tx);
       });
+      after(() => notifyIndexNow());
       return ok({ success: true });
     }
     if (resource === "admin/users" && method === "POST") {

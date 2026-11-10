@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { CartProvider } from "@/components/cart-provider";
 import "./globals.css";
 import {siteUrl} from '@/lib/site';
-import { officialIcon, officialLogo } from "@/lib/brand";
+import { officialIcon } from "@/lib/brand";
+import { storeDescription } from "@/lib/seo";
 export const metadata: Metadata = {
   metadataBase: new URL(
     siteUrl(),
@@ -11,16 +12,10 @@ export const metadata: Metadata = {
     default: "Leytech | Tecnología que va contigo",
     template: "%s | Leytech",
   },
-  description:
-    "Explora tecnología para trabajar, jugar y disfrutar. Accesorios, audio, gaming y cotizaciones por WhatsApp en Leytech.",
+  description: storeDescription,
   icons: { icon: officialIcon },
-  openGraph: {
-    title: "Leytech | Tecnología que va contigo",
-    description: "Tu próximo upgrade empieza aquí.",
-    locale: "es_PE",
-    type: "website",
-    images: [{ url: officialLogo, alt: "Logo de Leytech" }],
-  },
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION,
+    other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined },
 };
 export default function RootLayout({
   children,

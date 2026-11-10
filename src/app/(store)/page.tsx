@@ -9,19 +9,43 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
-import { settings, categories, products } from "@/lib/catalog";
+import { cachedSettings, categories, products } from "@/lib/catalog";
 import { CategoryIcon } from "@/components/icons";
 import { ProductGrid } from "@/components/store-ui";
 import { Benefits } from "@/components/store-shell";
+import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
+import { organization, publicMetadata, storeDescription } from "@/lib/seo";
+
+export async function generateMetadata() {
+  const store = await cachedSettings();
+  return publicMetadata(store, { path: "/", title: "Tienda de tecnología y gaming en Perú", description: storeDescription });
+}
 export default async function Home() {
   const [s, c, featured, newest] = await Promise.all([
-    settings(),
+    cachedSettings(),
     categories(),
     products({ featured: true }),
-    products({ sort: "newest" }),
+    products({ sort: "newest", preferReal: true, limit: 7 }),
   ]);
+  const cover: HeroSlide = {
+    id: "cover", image: s.heroImage, href: "/catalogo", name: "Explora el catálogo", label: "Leytech",
+  };
+  const leadSample = s.heroImage === "/images/hero.jpg"
+    ? featured.products.find(p => p.slug === "audifonos-inalambricos-studio") : undefined;
+  const selection = leadSample
+    ? [leadSample, ...newest.products.filter(p => p.id !== leadSample.id)]
+    : newest.products;
+  const slides: HeroSlide[] = selection.map(p => ({
+    id: p.id,
+    image: p.id === leadSample?.id ? s.heroImage : p.images[0] || "/images/placeholder.svg",
+    href: `/producto/${p.slug}`,
+    name: p.name,
+    label: p.is_demo ? `${p.category_name} · Muestra` : p.category_name,
+  }));
+  if (!leadSample) slides.unshift(cover);
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organization(s)).replace(/</g, "\\u003c") }} />
       <div className="container home-intro">
         <div className="hero">
           <div className="hero-content">
@@ -44,21 +68,7 @@ export default async function Home() {
               </span>
             </div>
           </div>
-          <div className="hero-visual">
-            <Image
-              src={s.heroImage}
-              alt="Audífonos negros sobre un fondo neutro"
-              fill
-              priority
-              sizes="(max-width:700px) 100vw,55vw"
-            />
-            <div className="hero-product-label">
-              <span>Encuentra tu sonido</span>
-              <Link href="/catalogo?categoria=audio">
-                Explora audio <ArrowUpRight size={17} />
-              </Link>
-            </div>
-          </div>
+          <HeroCarousel slides={slides.slice(0, 7)} />
         </div>
         <div className="hero-asides">
           <Link
@@ -165,17 +175,18 @@ export default async function Home() {
           </Link>
         </div>
       </section>
-      <section className="container section">
+      <section className="container section home-newest">
         <div className="section-heading">
           <div>
             <h2>Lo último en llegar</h2>
-            <p>Nuevas posibilidades para tu próximo upgrade.</p>
+            <p>Los productos agregados más recientemente al catálogo.</p>
           </div>
           <Link href="/catalogo?sort=newest" className="text-link">
             Ver novedades <ArrowRight size={16} />
           </Link>
         </div>
-        <ProductGrid products={newest.products.slice(0, 4)} />
+        {newest.products.length > 0 ? <ProductGrid products={newest.products.slice(0, 4)} />
+          : <p className="empty-inline">Las novedades aparecerán aquí cuando se publiquen.</p>}
       </section>
       <section className="container personal-help">
         <div className="personal-help-symbol">

@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite", "pg"],
   images: { formats: ["image/avif", "image/webp"] },
+  async rewrites() {
+    return [{ source: "/:key([a-f0-9]{32}).txt", destination: "/api/indexnow-key/:key" }];
+  },
   async headers() {
     return [
       {

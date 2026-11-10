@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { ShoppingCart, Plus, Check, ArrowRight } from "lucide-react";
 import { useCart } from "./cart-provider";
 import type { Product } from "@/lib/types";
@@ -36,23 +37,34 @@ export function ProductCard({
   eager?: boolean;
 }) {
   const cart = useCart();
-  const v = p.variants.find((x) => x.stock - x.reserved > 0) || p.variants[0];
+  const [variantId, selectVariant] = useState("");
+  const [preview, setPreview] = useState(false);
+  const selected = p.variants.find(x => x.id === variantId);
+  const v = selected || p.variants.find(x => x.stock - x.reserved > 0) || p.variants[0];
   if (!v) return null;
-  const stock = p.variants.reduce((s, i) => s + i.stock - i.reserved, 0);
+  const available = Math.max(0, v.stock - v.reserved);
+  const stock = selected ? available : p.variants.reduce((s, i) => s + i.stock - i.reserved, 0);
+  const image = v.image || p.images[0] || "/images/placeholder.svg";
+  const alternate = !selected && p.images.find(url => url !== image);
+  const colors = p.variants.filter(i => i.color);
+  const href = `/producto/${p.slug}${selected ? `?variante=${encodeURIComponent(selected.id)}` : ""}`;
   const discount = v.compare_at
     ? Math.round((1 - v.price / v.compare_at) * 100)
     : 0;
   return (
     <article className="product-card">
-      <div className="product-photo">
-        <Link href={`/producto/${p.slug}`} tabIndex={-1} aria-hidden="true">
+      <div className="product-photo" onPointerEnter={event => { if (event.pointerType === "mouse") setPreview(true); }}
+        onPointerLeave={() => setPreview(false)}>
+        <Link href={href} tabIndex={-1} aria-hidden="true">
           <Image
-            src={p.images[0] || "/images/placeholder.svg"}
+            src={image}
             alt={p.name}
             fill
             loading={eager ? "eager" : "lazy"}
             sizes="(max-width:600px) 50vw,(max-width:1000px) 33vw,25vw"
           />
+          {preview && alternate && <Image className="product-photo-alternate" src={alternate} alt="" fill
+            sizes="(max-width:600px) 50vw,(max-width:1000px) 33vw,25vw" />}
         </Link>
         {p.is_demo && <span className="product-badge blue">Muestra</span>}
         {!p.is_demo && discount > 0 && (
@@ -66,26 +78,25 @@ export function ProductCard({
       </div>
       <div className="product-card-content">
         <span className="product-brand">{p.brand}</span>
-        <Link className="product-name" href={`/producto/${p.slug}`}>
+        <Link className="product-name" href={href}>
           {p.name}
         </Link>
         <span className="product-card-detail">
           {Object.values(p.specifications).slice(0, 2).join(" · ")}
         </span>
-        <div className="product-swatches">
-          {p.variants
-            .filter((i) => i.color)
-            .map((i) => (
-              <Link
+        <div className="product-swatches" role={colors.length > 1 ? "group" : undefined}
+          aria-label={colors.length > 1 ? `Colores de ${p.name}` : undefined}>
+          {colors.length > 1 && colors.map((i) => (
+              <button type="button"
                 key={i.id}
-                href={`/producto/${p.slug}?variante=${i.id}`}
-                title={`${i.color}${i.stock - i.reserved === 0 ? " (agotado)" : ""}`}
-                aria-label={`Ver ${p.name} en ${i.color}`}
-                style={{ background: i.color_hex }}
+                onClick={() => selectVariant(i.id)}
+                title={`${i.name}${i.stock - i.reserved <= 0 ? " (agotado)" : ""}`}
+                aria-label={`${i.name}${i.stock - i.reserved <= 0 ? ", agotado" : ""}`}
+                aria-pressed={i.id === v.id}
                 className={i.stock - i.reserved === 0 ? "out" : ""}
-              />
+              ><span style={{ backgroundColor: i.color_hex }} /></button>
             ))}
-          {p.variants.length > 1 && <small>{p.variants.length} colores</small>}
+          {colors.length > 1 && <small aria-live="polite">{selected ? selected.name : `${colors.length} colores`}</small>}
         </div>
         <div className="price-row">
           <div>
@@ -96,7 +107,7 @@ export function ProductCard({
             className="quick-add"
             title={`Agregar ${p.name} (${v.name})`}
             aria-label={`Agregar ${p.name} al carrito`}
-            disabled={!stock}
+            disabled={!available}
             onClick={() =>
               cart.add({
                 variantId: v.id,
@@ -104,9 +115,9 @@ export function ProductCard({
                 variant: v.name,
                 quantity: 1,
                 price: v.price,
-                image: v.image || p.images[0],
+                image,
                 slug: p.slug,
-                max: Math.min(99, v.stock - v.reserved),
+                max: Math.min(99, available),
                 isSample: p.is_demo,
               })
             }
@@ -114,7 +125,7 @@ export function ProductCard({
             <Plus size={20} />
           </button>
         </div>
-        {p.is_demo ? <small className="image-note">Stock de muestra: {stock} · precio referencial</small> : (
+        {p.is_demo ? <small className="image-note">{stock ? `Stock de muestra: ${stock}` : "Agotado"} · precio referencial</small> : (
           <span className={`stock-label ${stock ? "" : "no-stock"}`}>
             <span />
             {stock ? `Stock disponible: ${stock}` : "Agotado"}

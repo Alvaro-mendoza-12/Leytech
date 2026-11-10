@@ -1,9 +1,13 @@
-import { settings } from "@/lib/catalog";
+import { cachedSettings } from "@/lib/catalog";
 import { ClaimForm } from "@/components/claim-form";
 import { MessageCircle } from "lucide-react";
-export const metadata = { title: "Libro de Reclamaciones" };
+import { publicMetadata } from "@/lib/seo";
+export async function generateMetadata() {
+  return publicMetadata(await cachedSettings(), { path: "/reclamaciones", title: "Libro de Reclamaciones",
+    description: "Registra una queja o reclamo en Leytech y conserva tu constancia con el código de atención." });
+}
 export default async function Page() {
-  const s = await settings();
+  const s = await cachedSettings();
   return (
     <div className="container page-container">
       <div className="info-content" style={{ margin: "0 auto" }}>

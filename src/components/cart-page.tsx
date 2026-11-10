@@ -16,14 +16,49 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useCart } from "./cart-provider";
+import type { StoredLine } from "./cart-provider";
 import { money } from "@/lib/format";
 import { announceUpdate } from "./live-updates";
+
+const quoteStorage = "leytech-last-quote-v1";
+type SavedQuote = { code: string; url: string; items: string };
+function cartKey(items: StoredLine[]) {
+  return JSON.stringify(items.map(i => [i.variantId, i.quantity, i.price]).sort());
+}
+
+function QuoteReceipt({ quote, current }: { quote: SavedQuote; current: boolean }) {
+  const { setNotice } = useCart();
+  return <section className="success-box quote-receipt" aria-label="Última cotización guardada">
+    <strong><Check size={17} aria-hidden="true" /> Cotización {quote.code}</strong>
+    <p>{current ? "Envía el resumen en WhatsApp para que podamos atenderte."
+      : "Este código corresponde a una consulta anterior. Puedes volver a abrirla en WhatsApp."}</p>
+    <div className="quote-receipt-actions">
+      <a className="btn btn-whatsapp" href={quote.url} target="_blank" rel="noreferrer">
+        Abrir WhatsApp <MessageCircle size={18} />
+      </a>
+      <button className="btn btn-outline" onClick={async () => {
+        try { await navigator.clipboard.writeText(quote.code); setNotice("Código copiado"); }
+        catch { setNotice(quote.code); }
+      }}><Copy size={15} /> Copiar código</button>
+    </div>
+  </section>;
+}
+
 export function CartPage({ revision }: { revision: string }) {
   const cart = useCart();
   const [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
     [availabilityError, setAvailabilityError] = useState(""),
-    [quote, setQuote] = useState<{ code: string; url: string } | null>(null);
+    [quote, setQuote] = useState<SavedQuote | null>(null);
+  const currentQuote = quote?.items === cartKey(cart.items) && !availabilityError;
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(quoteStorage) || "null");
+      if (stored && typeof stored.code === "string" && /^COT-\d{5,}$/.test(stored.code)
+        && typeof stored.items === "string" && typeof stored.url === "string"
+        && /^https:\/\/wa\.me\/\d{9,15}\?/.test(stored.url)) setQuote(stored);
+    } catch { /* Storage may be unavailable in private browsing. */ }
+  }, []);
   async function validate(signal?: AbortSignal) {
     const items = cart.items;
     const res = await fetch("/api/cart/validate?adjust=1", {
@@ -41,10 +76,8 @@ export function CartPage({ revision }: { revision: string }) {
     cart.replace(data.items, items);
     setAvailabilityError("");
     if (data.adjusted) {
-      setQuote(null);
       cart.setNotice("Ajustamos el carrito al stock disponible. Revisa las cantidades.");
     } else if (changed) {
-      setQuote(null);
       cart.setNotice("Se actualizaron los precios. Revisa el nuevo total.");
     }
   }
@@ -52,7 +85,6 @@ export function CartPage({ revision }: { revision: string }) {
     if (!cart.items.length) return;
     validate(signal).catch((e) => {
       if (!signal.aborted) {
-        setQuote(null);
         setAvailabilityError(e.message);
       }
     });
@@ -64,17 +96,21 @@ export function CartPage({ revision }: { revision: string }) {
     return () => controller.abort();
   }, [cart.ready, revision]);
   async function getQuote() {
+    const items = cart.items;
     setBusy("quote");
     setError("");
     try {
       const res = await fetch("/api/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart.items }),
+        body: JSON.stringify({ items }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setQuote(data);
+      const saved = { code: data.code, url: data.url, items: cartKey(items) };
+      setQuote(saved);
+      setAvailabilityError("");
+      try { localStorage.setItem(quoteStorage, JSON.stringify(saved)); } catch {}
       announceUpdate("admin");
     } catch (e) {
       setError((e as Error).message);
@@ -103,6 +139,7 @@ export function CartPage({ revision }: { revision: string }) {
         <Link href="/catalogo" className="btn btn-primary">
           Explorar productos <ArrowRight size={17} />
         </Link>
+        {quote && <QuoteReceipt quote={quote} current={false} />}
       </div>
     );
   return (
@@ -162,7 +199,6 @@ export function CartPage({ revision }: { revision: string }) {
                       disabled={i.quantity <= 1}
                       onClick={() => {
                         cart.update(i.variantId, i.quantity - 1);
-                        setQuote(null);
                       }}
                     >
                       <Minus size={13} />
@@ -175,7 +211,6 @@ export function CartPage({ revision }: { revision: string }) {
                       aria-label={`Cantidad de ${i.name}`}
                       onChange={(e) => {
                         cart.update(i.variantId, Number(e.target.value) || 1);
-                        setQuote(null);
                       }}
                     />
                     <button
@@ -183,7 +218,6 @@ export function CartPage({ revision }: { revision: string }) {
                       disabled={i.quantity >= i.max}
                       onClick={() => {
                         cart.update(i.variantId, i.quantity + 1);
-                        setQuote(null);
                       }}
                     >
                       <Plus size={13} />
@@ -196,7 +230,6 @@ export function CartPage({ revision }: { revision: string }) {
                     className="remove-button"
                     onClick={() => {
                       cart.remove(i.variantId);
-                      setQuote(null);
                       setError("");
                     }}
                   >
@@ -213,38 +246,6 @@ export function CartPage({ revision }: { revision: string }) {
             />
             Comprobamos el precio y la disponibilidad al preparar tu solicitud. Leytech confirma la compra contigo por WhatsApp.
           </div>
-          {quote && (
-            <div className="success-box" role="status">
-              <strong>
-                <Check size={17} style={{ verticalAlign: "middle" }} />{" "}
-                Cotización {quote.code} registrada
-              </strong>
-              <p>
-                Tu consulta está guardada. Abre WhatsApp y envía el mensaje para
-                que podamos atenderte. Los productos aún no están reservados.
-              </p>
-              <a
-                className="btn btn-whatsapp"
-                href={quote.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Abrir WhatsApp <MessageCircle size={18} />
-              </a>
-              <button
-                className="btn btn-outline"
-                style={{ marginLeft: 8 }}
-                onClick={() =>
-                  navigator.clipboard
-                    .writeText(quote.code)
-                    .then(() => cart.setNotice("Código copiado"))
-                    .catch(() => cart.setNotice(quote.code))
-                }
-              >
-                <Copy size={15} /> Copiar código
-              </button>
-            </div>
-          )}
         </div>
         <aside className="order-summary">
           <h2>Resumen de tu carrito</h2>
@@ -260,7 +261,7 @@ export function CartPage({ revision }: { revision: string }) {
             <span>Total estimado</span>
             <strong>{money(subtotal)}</strong>
           </div>
-          <button
+          {!currentQuote && <button
             className="btn btn-primary full"
             onClick={getQuote}
             disabled={!!busy}
@@ -268,10 +269,11 @@ export function CartPage({ revision }: { revision: string }) {
             {busy === "quote" ? (
               <LoaderCircle size={17} className="spin" />
             ) : null}
-            Enviar carrito por WhatsApp <MessageCircle size={17} />
-          </button>
+            {busy ? "Preparando…" : "Preparar cotización"} <MessageCircle size={17} />
+          </button>}
+          {quote && <QuoteReceipt quote={quote} current={currentQuote} />}
           <p className="summary-note">
-            Generamos un resumen con código y productos. Acuerda la compra, el pago y la entrega con Leytech directamente por WhatsApp.
+            Prepara el resumen y envíalo por WhatsApp para acordar la compra, el pago y la entrega. La cotización queda guardada en este navegador.
           </p>
           {cart.items.some(item => item.isSample) && <p className="summary-note">El carrito incluye productos de muestra. Sus precios son referenciales y su disponibilidad se consulta por WhatsApp.</p>}
         </aside>

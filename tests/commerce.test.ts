@@ -248,6 +248,9 @@ test("búsqueda por nombre, marca y categoría con consultas parametrizadas", as
   assert.deepEqual(ssd.products.map(p => p.slug), ["ssd-portatil-pocket-1-tb"]);
   assert.equal((await products({ q: ssd.products[0].variants[0].sku })).total, 1);
   assert.equal((await products({ q: "%_" })).total, 0);
+  assert.equal((await products({ q: "Leitech Perú" })).total, (await products()).total);
+  assert.equal((await products({ q: "Ley Tech disco de estado sólido 1 TB" })).products[0].slug, "ssd-portatil-pocket-1-tb");
+  assert.ok((await products({ q: "auriculares" })).products.some(p => p.slug === "audifonos-inalambricos-studio"));
   assert.equal((await products({ q: "'; DROP TABLE products; --" })).total, 0);
 });
 test("filtros de categoría, color y rango deben coincidir en una misma variante", async () => {

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MessageCircle, MapPin, Mail } from "lucide-react";
-import { settings } from "@/lib/catalog";
+import { cachedSettings } from "@/lib/catalog";
+import { publicInfo, publicMetadata } from "@/lib/seo";
 const titles: Record<string, string> = {
   nosotros: "Somos Leytech.",
   contacto: "Conversemos.",
@@ -16,7 +17,9 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  return { title: titles[(await params).slug] || "Información" };
+  const { slug } = await params;
+  if (!Object.hasOwn(publicInfo, slug)) return { title: "Información" };
+  return publicMetadata(await cachedSettings(), { path: `/informacion/${slug}`, ...publicInfo[slug as keyof typeof publicInfo] });
 }
 export default async function Page({
   params,
@@ -24,13 +27,13 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  if (!titles[slug]) notFound();
-  const s = await settings();
+  if (!Object.hasOwn(titles, slug)) notFound();
+  const s = await cachedSettings();
   const configured = s.policies[slug];
   const faqs = [
     [
       "¿Cómo puedo cotizar?",
-      "Agrega tus productos al carrito y selecciona “Enviar carrito por WhatsApp”. Registraremos un código para identificar tu consulta. Abre WhatsApp y envía el resumen para acordar los detalles con Leytech.",
+      "Agrega tus productos al carrito y selecciona “Preparar cotización”. Luego abre WhatsApp y envía el resumen. Puedes recuperar el código más reciente en el carrito desde el mismo navegador.",
     ],
     [
       "¿Debo crear una cuenta?",

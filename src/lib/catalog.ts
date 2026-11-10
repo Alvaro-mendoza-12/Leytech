@@ -1,6 +1,7 @@
 import { db, type Queryable } from "./db";
 import type { Product, Variant, Category, StoreSettings } from "./types";
 import { cache } from "react";
+import { searchTerms } from "./search-terms";
 
 export async function settings(q: Queryable = db) {
   const { rows } = await q.query<{ value: StoreSettings }>(
@@ -41,6 +42,13 @@ export async function categories(all = false) {
     )
   ).rows;
 }
+export async function hasActiveOffers() {
+  const { rows } = await db.query<{ exists: boolean }>(`SELECT EXISTS (
+    SELECT 1 FROM variants v JOIN products p ON p.id=v.product_id JOIN categories c ON c.id=p.category_id
+    WHERE c.active AND p.status='published' AND NOT p.is_demo AND v.active AND v.compare_at>v.price
+  )`);
+  return rows[0].exists;
+}
 export async function products(
   options: {
     q?: string;
@@ -55,6 +63,7 @@ export async function products(
     all?: boolean;
     featured?: boolean;
     limit?: number;
+    preferReal?: boolean;
   } = {},
 ) {
   const params: unknown[] = options.all ? [] : [catalogVisibility(await settings())];
@@ -65,13 +74,13 @@ export async function products(
     params.push(value);
     where.push(sql.replaceAll("?", `$${params.length}`));
   };
-  const terms = options.q?.trim().slice(0, 120).split(/\s+/).filter(Boolean).slice(0, 8) || [];
+  const terms = searchTerms(options.q || "");
   for (const term of terms) {
     add(
-      `(strpos(translate(lower(concat_ws(' ', p.name, p.brand, p.summary, p.description, p.specifications::text, c.name)), 'áéíóúü', 'aeiouu'),
-               translate(lower(?), 'áéíóúü', 'aeiouu')) > 0
+      `(EXISTS (SELECT 1 FROM unnest(?::text[]) AS alias
+                WHERE strpos(translate(lower(concat_ws(' ', p.name, p.brand, p.summary, p.description, p.specifications::text, c.name)), 'áéíóúü', 'aeiouu'), alias) > 0)
         OR EXISTS (SELECT 1 FROM variants search_variant WHERE search_variant.product_id=p.id AND search_variant.active=true
-                   AND strpos(lower(search_variant.sku), lower(?)) > 0))`,
+                   AND EXISTS (SELECT 1 FROM unnest(?::text[]) AS alias WHERE strpos(lower(search_variant.sku), alias) > 0)))`,
       term,
     );
   }
@@ -102,12 +111,12 @@ export async function products(
       : options.sort === "price-desc"
         ? "min_price DESC"
         : options.sort === "newest"
-          ? "p.created_at DESC"
+        ? "p.created_at DESC,p.id"
           : "p.featured DESC,p.created_at DESC";
   const limit = options.all ? 1000 : Math.max(1, Math.min(12, Math.floor(options.limit || 12)));
   const page = Math.max(1, Math.min(Math.floor(options.page || 1), 10000));
   const { rows } = await db.query<Product & { min_price: number }>(
-    `SELECT p.*, c.name AS category_name,c.slug AS category_slug,(SELECT min(v.price) FROM variants v WHERE v.product_id=p.id AND v.active=true) AS min_price ${base} ORDER BY ${order} LIMIT ${limit} OFFSET ${(page - 1) * limit}`,
+    `SELECT p.*, c.name AS category_name,c.slug AS category_slug,(SELECT min(v.price) FROM variants v WHERE v.product_id=p.id AND v.active=true) AS min_price ${base} ORDER BY ${options.preferReal ? "p.is_demo," : ""}${order} LIMIT ${limit} OFFSET ${(page - 1) * limit}`,
     params,
   );
   if (rows.length) {
@@ -138,3 +147,4 @@ export async function productBySlug(slug: string, all = false) {
   ).rows, !all && rows[0].is_demo);
   return rows[0];
 }
+export const cachedProductBySlug = cache((slug: string) => productBySlug(slug));

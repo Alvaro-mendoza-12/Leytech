@@ -1,28 +1,42 @@
 import Link from "next/link";
 import { Search, SlidersHorizontal, ChevronRight, X } from "lucide-react";
-import { products, categories, settings, catalogVisibility, visibleProduct } from "@/lib/catalog";
+import { products, categories, cachedSettings, catalogVisibility, visibleProduct } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { ProductGrid } from "@/components/store-ui";
 import { CategoryIcon } from "@/components/icons";
 import { ResponsiveFilters } from "@/components/responsive-filters";
-export const metadata = { title: "Catálogo" };
+import { publicMetadata, storeDescription } from "@/lib/seo";
+
+type Query = Promise<Record<string, string | string[] | undefined>>;
+async function readParams(searchParams: Query) {
+  return Object.fromEntries(Object.entries(await searchParams).flatMap(([key, value]) =>
+    typeof value === "string" && value.trim() ? [[key, value.trim().slice(0, 120)]] : []));
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: Query }) {
+  const [store, p] = await Promise.all([cachedSettings(), readParams(searchParams)]);
+  const category = p.categoria ? (await categories()).find(c => c.slug === p.categoria) : undefined;
+  return publicMetadata(store, {
+    path: category ? `/catalogo?categoria=${encodeURIComponent(category.slug)}` : "/catalogo",
+    title: category?.name || "Catálogo de tecnología",
+    description: category ? `Explora ${category.name.toLowerCase()} en ${store.name}. Compara variantes, precios en soles y stock. Cotiza por WhatsApp.` : storeDescription,
+    index: !["q", "marca", "color", "min", "max", "ofertas", "sort", "pagina"].some(key => p[key]) && (!p.categoria || !!category),
+  });
+}
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Query;
 }) {
-  const p = await searchParams;
-  const store=await settings();
+  const p = await readParams(searchParams);
+  const store = await cachedSettings();
   const visibility = catalogVisibility(store);
   const hasFilters=!!(p.q||p.categoria||p.marca||p.color||p.ofertas||p.min||p.max);
-  const min =
-      p.min && Number.isFinite(Number(p.min))
-        ? Math.max(0, Math.round(Number(p.min) * 100))
-        : undefined,
-    max =
-      p.max && Number.isFinite(Number(p.max))
-        ? Math.max(0, Math.round(Number(p.max) * 100))
-        : undefined;
+  const cents = (value?: string) => value && Number.isFinite(Number(value))
+    ? Math.max(0, Math.min(100_000_000, Math.round(Number(value) * 100))) : undefined;
+  let min = cents(p.min), max = cents(p.max);
+  const swapped = min !== undefined && max !== undefined && min > max;
+  if (swapped) [min, max] = [max, min];
   const [result, cats, brands, colors] = await Promise.all([
     products({
       q: p.q,
@@ -55,7 +69,7 @@ export default async function CatalogPage({
         string,
       ][],
     );
-    return `/catalogo?${query}`;
+    return query.size ? `/catalogo?${query}` : "/catalogo";
   }
   return (
     <div className="container page-container">
@@ -79,7 +93,7 @@ export default async function CatalogPage({
             <summary>
               <SlidersHorizontal size={18} /> Filtrar productos <span />
             </summary>
-            <form action="/catalogo">
+            <form action="/catalogo" key={JSON.stringify(p)}>
               <label>
                 Buscar
                 <div className="filter-search">
@@ -140,18 +154,20 @@ export default async function CatalogPage({
                     name="min"
                     type="number"
                     min="0"
+                    step="0.01"
                     placeholder="Desde"
                     aria-label="Precio mínimo"
-                    defaultValue={p.min}
+                    defaultValue={min === undefined ? undefined : min / 100}
                   />
                   <span>—</span>
                   <input
                     name="max"
                     type="number"
                     min="0"
+                    step="0.01"
                     placeholder="Hasta"
                     aria-label="Precio máximo"
-                    defaultValue={p.max}
+                    defaultValue={max === undefined ? undefined : max / 100}
                   />
                 </div>
               </fieldset>
@@ -183,6 +199,7 @@ export default async function CatalogPage({
           </ResponsiveFilters>
         </aside>
         <section className="catalog-results" aria-label="Productos">
+          {swapped && <p className="info-box" role="status">Ordenamos el rango de menor a mayor. Mostrando productos entre S/ {(min! / 100).toFixed(2)} y S/ {(max! / 100).toFixed(2)}.</p>}
           <div className="results-bar">
             <span>
               <strong>{result.total}</strong> producto
@@ -195,8 +212,8 @@ export default async function CatalogPage({
               p.ofertas ||
               p.min ||
               p.max) && (
-              <Link href="/catalogo" className="filter-chip">
-                Quitar filtros <X size={13} />
+              <Link href={p.ofertas === "1" ? href({ ofertas: "", pagina: "" }) : "/catalogo"} className="filter-chip">
+                {p.ofertas === "1" ? "Quitar ofertas" : "Quitar filtros"} <X size={13} />
               </Link>
             )}
             <small>Precios en soles</small>

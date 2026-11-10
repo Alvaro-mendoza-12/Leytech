@@ -100,7 +100,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((current) =>
       current.map((i) =>
         i.variantId === id
-          ? { ...i, quantity: Math.max(1, Math.min(quantity, i.max, 99)) }
+          ? { ...i, quantity: Math.max(1, Math.min(Math.trunc(quantity) || 1, i.max, 99)) }
           : i,
       ),
     );
