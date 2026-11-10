@@ -18,7 +18,8 @@ import { organization, publicMetadata, storeDescription } from "@/lib/seo";
 
 export async function generateMetadata() {
   const store = await cachedSettings();
-  return publicMetadata(store, { path: "/", title: "Tienda de tecnología y gaming en Perú", description: storeDescription });
+  return publicMetadata(store, { path: "/", title: "Tienda de tecnología y gaming en Perú",
+    shareTitle: `${store.name} | Tecnología y accesorios`, description: storeDescription });
 }
 export default async function Home() {
   const [s, c, featured, newest] = await Promise.all([

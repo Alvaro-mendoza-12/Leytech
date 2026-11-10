@@ -5,7 +5,7 @@ import { AdminLogin } from "@/components/admin/login";
 import { cachedSettings } from "@/lib/catalog";
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "Ingresar al panel",
+  title: "Acceso administrativo",
   robots: { index: false, follow: false },
 };
 export default async function Page() {
