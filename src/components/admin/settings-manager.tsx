@@ -52,6 +52,7 @@ export function SettingsManager({
     field: "logoUrl" | "heroImage",
   ) {
     if (!file) return;
+    if(file.size>4000000){setError('La imagen debe pesar como máximo 4 MB.');return;}
     setBusy(true);
     setError("");
     try {
@@ -361,11 +362,9 @@ export function SettingsManager({
                       onChange={(e) => update("salesEnabled", e.target.checked)}
                     />
                     <span>
-                      <strong>Habilitar ventas reales</strong>
+                      <strong>Atender ventas por WhatsApp</strong>
                       <small>
-                        Requiere información legal, políticas, entregas y
-                        métodos de pago configurados. Los productos de
-                        demostración seguirán bloqueados para ventas reales.
+                        Los clientes envían el carrito por WhatsApp. Confirmas la compra, el pago y la entrega personalmente. Los productos de ejemplo deben duplicarse y configurarse antes de publicarlos como reales.
                       </small>
                     </span>
                   </label>
@@ -373,6 +372,7 @@ export function SettingsManager({
               </section>
             </>
           )}
+          {tab==='whatsapp'&&<section className="form-panel"><h2>Tu tienda vende por WhatsApp</h2><p>El cliente prepara su carrito, genera una solicitud y te envía el resumen por WhatsApp. No se cobran tarjetas ni se utiliza una pasarela de pago en la web.</p><label>WhatsApp del negocio (internacional, sin +)<input value={s.whatsapp} pattern="[1-9][0-9]{7,14}" required onChange={e=>update('whatsapp',e.target.value)}/></label><div className="info-box">Cuando acuerdes una venta, abre Ventas → Solicitudes de WhatsApp y crea el pedido con los datos y el envío aceptados por el cliente. Después registra el pago verificado y la entrega.</div></section>}
           {tab === "pagos" && (
             <>
               <section className="form-panel">

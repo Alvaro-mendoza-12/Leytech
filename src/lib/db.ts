@@ -20,11 +20,14 @@ export function getDb(): Database {
   if (process.env.DATABASE_URL) {
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      max: 10,
+      max: Math.max(1,Math.min(Number(process.env.DATABASE_POOL_MAX)||(process.env.VERCEL?1:5),10)),
+      connectionTimeoutMillis: 15000,
+      idleTimeoutMillis: 15000,
+      allowExitOnIdle: true,
       ssl:
         process.env.DATABASE_SSL === "false"
           ? false
-          : { rejectUnauthorized: true },
+          : { rejectUnauthorized: true, ...(process.env.DATABASE_CA_CERT_BASE64 ? {ca: Buffer.from(process.env.DATABASE_CA_CERT_BASE64,'base64').toString('utf8')} : {}) },
     });
     globalDb.leytechDb = {
       query: async <T>(sql: string, params?: unknown[]) => ({

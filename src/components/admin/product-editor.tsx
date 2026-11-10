@@ -119,6 +119,7 @@ export function ProductEditor({
   }
   async function upload(file?: File) {
     if (!file) return;
+    if(file.size>4000000){setError('La fotografía debe pesar como máximo 4 MB.');return;}
     setUploading(true);
     setError("");
     try {
@@ -368,7 +369,7 @@ export function ProductEditor({
                 <Upload size={26} />
                 {uploading
                   ? "Subiendo imagen…"
-                  : "Selecciona una fotografía (máximo 5 MB)"}
+                  : "Selecciona una fotografía (máximo 4 MB)"}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -636,6 +637,7 @@ export function ProductEditor({
         )}
         {step === 5 && (
           <>
+            {product?.is_demo && !duplicate && <label className="consent-label"><input type="checkbox" checked={draft.confirmRealProduct||false} onChange={e=>field('confirmRealProduct',e.target.checked)}/>He revisado y actualizado las fotos, descripción, precio, garantía y stock con los datos reales de mi producto.</label>}
             <div className="review-grid">
               <img
                 src={draft.images[0] || "/images/placeholder.svg"}

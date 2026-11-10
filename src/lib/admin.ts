@@ -7,9 +7,9 @@ export async function saveProduct(input: unknown, admin: Admin) {
   const p = productSchema.parse(input);
   const id = p.id || crypto.randomUUID();
   return db.transaction(async (tx) => {
-    const exists =
-      (await tx.query("SELECT id FROM products WHERE id=$1 FOR UPDATE", [id]))
-        .rows.length > 0;
+    const existing = (await tx.query<{id:string;is_demo:boolean}>("SELECT id,is_demo FROM products WHERE id=$1 FOR UPDATE", [id])).rows[0];
+    const exists = !!existing;
+    if(existing?.is_demo && p.status==='published' && !p.confirmRealProduct) throw new AppError('Confirma que revisaste los datos reales antes de publicar este ejemplo.');
     const category = (
       await tx.query("SELECT id FROM categories WHERE id=$1", [p.category_id])
     ).rows[0];
@@ -69,6 +69,7 @@ export async function saveProduct(input: unknown, admin: Admin) {
           p.seo_description,
         ],
       );
+    if(existing?.is_demo && p.confirmRealProduct) await tx.query('UPDATE products SET is_demo=false WHERE id=$1',[id]);
     for (const v of missing)
       await tx.query("UPDATE variants SET active=false WHERE id=$1", [v.id]);
     for (const v of p.variants) {

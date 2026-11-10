@@ -1,0 +1,11 @@
+.git
+.data
+.env*
+!.env.example
+.next
+node_modules
+output
+.playwright-cli
+public/uploads/*
+!public/uploads/.gitkeep
+*.tsbuildinfo

@@ -30,7 +30,7 @@ export default async function Page({
   const faqs = [
     [
       "¿Cómo puedo cotizar?",
-      "Agrega tus productos al carrito y selecciona “Cotizar carrito por WhatsApp”. Registraremos tu solicitud con un código. Después abre WhatsApp y envía el mensaje a Leytech.",
+      "Agrega tus productos al carrito y selecciona “Comprar por WhatsApp”. Registraremos tu solicitud con un código. Después abre WhatsApp y envía el resumen a Leytech para confirmar la compra.",
     ],
     [
       "¿Debo crear una cuenta?",
@@ -42,11 +42,11 @@ export default async function Page({
     ],
     [
       "¿Cómo confirmo las opciones de envío?",
-      "Consulta las opciones habilitadas en el checkout. Si tu zona no aparece, cotiza por WhatsApp antes de comprar.",
+      "Dinos tu distrito y ciudad por WhatsApp. Confirmaremos la cobertura, el costo y el plazo de entrega antes de que aceptes la compra.",
     ],
     [
       "¿Cómo sé si mi pago fue confirmado?",
-      "Consulta el enlace privado de tu pedido. Solo se mostrará “Pagado” después de verificar el pago. La redirección de la pasarela, por sí sola, no lo confirma.",
+      "Leytech verifica el ingreso por el medio acordado en WhatsApp. Si tienes un pedido registrado, su enlace privado mostrará el estado actualizado después de esa verificación.",
     ],
     [
       "¿Qué ocurre con un producto digital?",

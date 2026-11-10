@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Search, SlidersHorizontal, ChevronRight, X } from "lucide-react";
-import { products, categories } from "@/lib/catalog";
+import { products, categories, settings } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { ProductGrid } from "@/components/store-ui";
 import { CategoryIcon } from "@/components/icons";
@@ -12,6 +12,8 @@ export default async function CatalogPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const p = await searchParams;
+  const store=await settings();
+  const hasFilters=!!(p.q||p.categoria||p.marca||p.color||p.ofertas||p.min||p.max);
   const min =
       p.min && Number.isFinite(Number(p.min))
         ? Math.max(0, Math.round(Number(p.min) * 100))
@@ -34,10 +36,10 @@ export default async function CatalogPage({
     }),
     categories(),
     db.query<{ brand: string }>(
-      "SELECT DISTINCT p.brand FROM products p JOIN categories c ON c.id=p.category_id WHERE p.status='published' AND c.active=true ORDER BY p.brand",
+      "SELECT DISTINCT p.brand FROM products p JOIN categories c ON c.id=p.category_id WHERE p.status='published' AND c.active=true AND ($1::boolean OR p.is_demo=false) ORDER BY p.brand",[store.demoMode],
     ),
     db.query<{ color: string }>(
-      "SELECT DISTINCT v.color FROM variants v JOIN products p ON p.id=v.product_id WHERE p.status='published' AND v.active=true AND v.color<>'' ORDER BY v.color",
+      "SELECT DISTINCT v.color FROM variants v JOIN products p ON p.id=v.product_id JOIN categories c ON c.id=p.category_id WHERE p.status='published' AND c.active=true AND ($1::boolean OR p.is_demo=false) AND v.active=true AND v.color<>'' ORDER BY v.color",[store.demoMode],
     ),
   ]);
   const active = cats.find((c) => c.slug === p.categoria);
@@ -206,16 +208,16 @@ export default async function CatalogPage({
               <h2>
                 {p.ofertas === "1"
                   ? "Aún no hay ofertas publicadas"
-                  : "No encontramos productos"}
+                  : hasFilters ? "No encontramos productos" : "Estamos preparando nuestro catálogo"}
               </h2>
               <p>
                 {p.ofertas === "1"
                   ? "Cuando Leytech publique promociones reales, aparecerán aquí."
-                  : "Prueba otra palabra o ajusta los filtros."}
+                  : hasFilters ? "Prueba otra palabra o ajusta los filtros." : "Escríbenos y te ayudaremos a encontrar el producto que buscas."}
               </p>
-              <Link href="/catalogo" className="btn btn-primary">
+              {!hasFilters ? <a href={`https://wa.me/${store.whatsapp}`} target="_blank" rel="noreferrer" className="btn btn-whatsapp">Consultar por WhatsApp</a> : <Link href="/catalogo" className="btn btn-primary">
                 Ver todo el catálogo
-              </Link>
+              </Link>}
             </div>
           )}
           {result.pages > 1 && (

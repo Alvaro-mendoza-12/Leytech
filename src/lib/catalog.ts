@@ -9,6 +9,7 @@ export async function settings(q: Queryable = db) {
     throw new Error("Ejecuta npm run db:setup antes de iniciar Leytech.");
   return {
     ...rows[0].value,
+    orderChannel: rows[0].value.orderChannel || 'whatsapp',
     primaryColor: rows[0].value.primaryColor || "#2563eb",
     logoUrl: rows[0].value.logoUrl || "",
     heroImage: rows[0].value.heroImage || "/images/hero.jpg",
@@ -40,6 +41,7 @@ export async function products(
   const where: string[] = [
     options.all ? "true" : "p.status='published' AND c.active=true",
   ];
+  if (!options.all && !(await settings()).demoMode) where.push('p.is_demo=false');
   const add = (sql: string, value: unknown) => {
     params.push(value);
     where.push(sql.replaceAll("?", `$${params.length}`));
@@ -98,8 +100,9 @@ export async function products(
   return { products: rows, total, page, pages: Math.ceil(total / limit) };
 }
 export async function productBySlug(slug: string, all = false) {
+  const hideExamples = !all && !(await settings()).demoMode;
   const { rows } = await db.query<Product>(
-    `SELECT p.*, c.name AS category_name,c.slug AS category_slug FROM products p JOIN categories c ON c.id=p.category_id WHERE p.slug=$1 ${all ? "" : "AND p.status='published' AND c.active=true"}`,
+    `SELECT p.*, c.name AS category_name,c.slug AS category_slug FROM products p JOIN categories c ON c.id=p.category_id WHERE p.slug=$1 ${all ? "" : "AND p.status='published' AND c.active=true"} ${hideExamples ? 'AND p.is_demo=false' : ''}`,
     [slug],
   );
   if (!rows[0]) return null;

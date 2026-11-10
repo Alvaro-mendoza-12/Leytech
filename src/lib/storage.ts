@@ -1,11 +1,12 @@
 import { AppError } from "./security";
 function storageConfig() {
   const base = process.env.STORAGE_SUPABASE_URL,
-    key = process.env.STORAGE_SERVICE_ROLE_KEY,
+    key = process.env.SUPABASE_SECRET_KEY || process.env.STORAGE_SERVICE_ROLE_KEY,
     bucket = process.env.STORAGE_BUCKET || "leytech-products";
   if (
     !base ||
     !key ||
+    key.startsWith('sb_publishable_') ||
     !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(base) ||
     !/^[a-z0-9-]{1,100}$/.test(bucket)
   )
@@ -15,6 +16,7 @@ function storageConfig() {
     );
   return { base, key, bucket };
 }
+function storageHeaders(key:string):Record<string,string>{return key.startsWith('sb_secret_')?{apikey:key}:{apikey:key,Authorization:`Bearer ${key}`};}
 export async function uploadObject(
   name: string,
   buffer: Buffer,
@@ -24,8 +26,7 @@ export async function uploadObject(
   const res = await fetch(`${base}/storage/v1/object/${bucket}/${name}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${key}`,
-      apikey: key,
+      ...storageHeaders(key),
       "Content-Type": contentType,
       "x-upsert": "false",
     },
@@ -42,7 +43,7 @@ export async function uploadObject(
 export async function downloadObject(name: string) {
   const { base, key, bucket } = storageConfig();
   return fetch(`${base}/storage/v1/object/authenticated/${bucket}/${name}`, {
-    headers: { Authorization: `Bearer ${key}`, apikey: key },
+    headers: storageHeaders(key),
     signal: AbortSignal.timeout(15000),
   });
 }

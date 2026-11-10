@@ -11,6 +11,7 @@ import {
   createOrder,
   snapshot,
   expireOrders,
+  createOrderFromQuote,
 } from "@/lib/commerce";
 import { paymentPreference, handleWebhook } from "@/lib/payments";
 import {
@@ -111,12 +112,6 @@ async function route(
     if (resource === "claims" && method === "POST") {
       await rateLimit(request, "claims", 5, 3600);
       const data = claimSchema.parse(await jsonBody(request));
-      const config = await settings();
-      if (!config.legalName || !config.ruc)
-        throw new AppError(
-          "El Libro de Reclamaciones estará disponible cuando Leytech complete su información legal. Por ahora, comunícate por WhatsApp.",
-          503,
-        );
       const { rows } = await db.query<{ code: string }>(
         "INSERT INTO claims(id,customer,type,description,request) VALUES($1,$2,$3,$4,$5) RETURNING code",
         [
@@ -224,6 +219,7 @@ async function route(
     }
     if (resource === "admin/products" && method === "POST")
       return ok(await saveProduct(await jsonBody(request), admin));
+    if(resource==='admin/quotes/order'&&method==='POST'){const order=await createOrderFromQuote(await jsonBody(request),admin);return ok({id:order.id,code:order.code,token:order.public_token},201);}
     if (resource === "admin/brands" && method === "POST") {
       const d = z
         .object({
@@ -368,15 +364,15 @@ async function route(
     }
     if (resource === "admin/upload" && method === "POST") {
       if (
-        Number(request.headers.get("content-length") || 0) > 5500000 ||
+        Number(request.headers.get("content-length") || 0) > 4200000 ||
         !request.headers.get("content-length")
       )
-        throw new AppError("La imagen debe pesar menos de 5 MB.");
+        throw new AppError("La imagen debe pesar como máximo 4 MB.");
       const form = await request.formData();
       const file = form.get("file");
-      if (!(file instanceof File) || file.size > 5000000 || file.size < 12)
+      if (!(file instanceof File) || file.size > 4000000 || file.size < 12)
         throw new AppError(
-          "Selecciona una imagen PNG, JPEG o WebP de hasta 5 MB.",
+          "Selecciona una imagen PNG, JPEG o WebP de hasta 4 MB.",
         );
       const buffer = Buffer.from(await file.arrayBuffer());
       let ext = "";

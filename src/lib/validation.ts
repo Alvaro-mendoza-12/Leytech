@@ -16,7 +16,7 @@ export const checkoutSchema = cartSchema.extend({
   idempotencyKey: z.uuid(),
   customer: z.object({
     name: text(100).min(3),
-    email: z.email().max(150),
+    email: z.union([z.literal(''),z.email().max(150)]),
     phone: z.string().regex(/^\+?[0-9 ()-]{9,18}$/),
     delivery: z.enum(["shipping", "pickup", "digital", "coordinate"]),
     address: text(250).default(""),
@@ -28,6 +28,7 @@ export const checkoutSchema = cartSchema.extend({
 export const productSchema = z
   .object({
     id: text(100).optional(),
+    confirmRealProduct: z.boolean().default(false),
     name: text(160).min(3),
     slug: z
       .string()
@@ -82,6 +83,7 @@ export const productSchema = z
   );
 export const settingsSchema = z
   .object({
+    orderChannel: z.enum(['whatsapp','online']).default('whatsapp'),
     primaryColor: z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
@@ -140,6 +142,7 @@ export const settingsSchema = z
   .refine(
     (s) =>
       !s.salesEnabled ||
+      s.orderChannel==='whatsapp' ||
       s.demoMode ||
       (s.legalName.length > 2 &&
         s.ruc.length === 11 &&
@@ -161,3 +164,4 @@ export const claimSchema = z.object({
   request: text(3000).min(10),
   consent: z.literal(true),
 });
+export const whatsappOrderSchema=z.object({quoteId:z.uuid(),name:text(100).min(3),phone:z.string().regex(/^\+?[0-9 ()-]{9,18}$/),email:z.union([z.literal(''),z.email().max(150)]).default(''),delivery:z.enum(['shipping','pickup','digital']),address:text(250).default(''),district:text(100).default(''),shippingFee:z.number().int().nonnegative().max(1000000),agreement:text(1000).min(10)}).refine(d=>d.delivery==='shipping'||d.shippingFee===0,'Solo un envío físico puede tener costo de entrega.').refine(d=>d.delivery!=='shipping'||d.address.length>=5,'Completa la dirección acordada con el cliente.');

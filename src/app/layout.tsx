@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { CartProvider } from "@/components/cart-provider";
 import "./globals.css";
+import {siteUrl} from '@/lib/site';
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    siteUrl(),
   ),
   title: {
     default: "Leytech | Tecnología que va contigo",

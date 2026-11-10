@@ -1,15 +1,16 @@
 import { db } from "../src/lib/db";
 import { slugify } from "../src/lib/format";
 import type { StoreSettings } from "../src/lib/types";
-export async function seed() {
+export async function seed(demo=true) {
   const config: StoreSettings = {
+    orderChannel:'whatsapp',
     primaryColor: "#2563eb",
     logoUrl: "",
     heroImage: "/images/hero.jpg",
     name: "Leytech",
     whatsapp: "51905886853",
     tagline: "Tecnología que va contigo.",
-    demoMode: true,
+    demoMode: demo,
     salesEnabled: false,
     legalName: "",
     ruc: "",
@@ -45,6 +46,7 @@ export async function seed() {
       "INSERT INTO categories(id,name,slug,icon) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING",
       [id, name, id, icon],
     );
+  if(!demo)return;
   const items = [
     [
       "Audífonos inalámbricos Studio",

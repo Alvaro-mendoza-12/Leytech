@@ -15,13 +15,12 @@ export default async function Page() {
               <br />
               {s.address}
             </p>
-            <ClaimForm />
           </>
         ) : (
           <>
             <div className="info-box">
-              El negocio está completando la información legal necesaria para
-              habilitar este libro. Aún no se aceptan ventas reales.
+              Leytech está completando los datos de identificación del titular.
+              Puedes registrar tu solicitud en el formulario o contactarnos por WhatsApp.
             </div>
             <p>
               Si necesitas comunicarte con Leytech, escríbenos por WhatsApp.
@@ -36,6 +35,7 @@ export default async function Page() {
             </a>
           </>
         )}
+        <ClaimForm />
       </div>
     </div>
   );

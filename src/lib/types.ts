@@ -60,6 +60,7 @@ export type SnapshotLine = {
   priceChanged: boolean;
 };
 export type StoreSettings = {
+  orderChannel: 'whatsapp' | 'online';
   primaryColor: string;
   logoUrl: string;
   heroImage: string;

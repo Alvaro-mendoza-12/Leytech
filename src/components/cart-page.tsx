@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -19,8 +18,7 @@ import {
 import { useCart } from "./cart-provider";
 import { money } from "@/lib/format";
 export function CartPage() {
-  const cart = useCart(),
-    router = useRouter();
+  const cart = useCart();
   const [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
     [quote, setQuote] = useState<{ code: string; url: string } | null>(null);
@@ -47,17 +45,6 @@ export function CartPage() {
       validate().catch((e) => setError(e.message));
     }
   }, [cart.ready]); // Validate saved cart once on entry; subsequent actions revalidate on the server.
-  async function checkout() {
-    setBusy("checkout");
-    setError("");
-    try {
-      if (await validate()) router.push("/checkout");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy("");
-    }
-  }
   async function getQuote() {
     setBusy("quote");
     setError("");
@@ -206,8 +193,7 @@ export function CartPage() {
               size={16}
               style={{ verticalAlign: "middle", marginRight: 5 }}
             />
-            Comprobamos el precio y la disponibilidad al cotizar y al confirmar
-            tu pedido.
+            Comprobamos el precio y la disponibilidad al preparar tu solicitud. Leytech confirma la compra contigo por WhatsApp.
           </div>
           {quote && (
             <div className="success-box" role="status">
@@ -258,29 +244,16 @@ export function CartPage() {
           </div>
           <button
             className="btn btn-primary full"
-            onClick={checkout}
-            disabled={!!busy}
-          >
-            {busy === "checkout" ? (
-              <LoaderCircle size={17} className="spin" />
-            ) : null}
-            Continuar con mi pedido <ArrowRight size={17} />
-          </button>
-          <button
-            className="btn btn-whatsapp full"
             onClick={getQuote}
             disabled={!!busy}
           >
             {busy === "quote" ? (
-              <LoaderCircle size={18} className="spin" />
-            ) : (
-              <MessageCircle size={18} />
-            )}
-            Cotizar carrito por WhatsApp
+              <LoaderCircle size={17} className="spin" />
+            ) : null}
+            Comprar por WhatsApp <MessageCircle size={17} />
           </button>
           <p className="summary-note">
-            El costo de entrega se confirma antes de crear un pedido. Cotizar no
-            implica comprar ni reservar productos.
+            Generamos un resumen con código y productos. Abre WhatsApp para acordar el pago y la entrega con Leytech. No se realiza ningún cobro en esta web.
           </p>
         </aside>
       </div>

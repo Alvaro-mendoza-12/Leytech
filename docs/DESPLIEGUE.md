@@ -1,55 +1,58 @@
 # Despliegue y operación
 
-## Infraestructura
+## Producción
 
-Next.js 16 en un runtime Node compatible (Node 22+), PostgreSQL externo con TLS y Supabase Storage para imágenes de administración. Puede ejecutarse en Vercel o un servidor Node con proxy HTTPS. No se aprovisionó infraestructura ni se validó un despliegue remoto.
+Tienda: https://leytech-ochre.vercel.app. Panel: https://leytech-ochre.vercel.app/admin.
 
-1. Crea PostgreSQL, una cuenta de aplicación con permisos mínimos y un bucket privado `leytech-products` en Supabase Storage. Limita el bucket a JPEG/PNG/WebP y 5 MB.
-2. Configura las variables abajo como secretos del proveedor. No incluyas `.env.local`, `.data` ni accesos locales en el despliegue.
-3. En un entorno de mantenimiento con la conexión de destino, ejecuta `npm ci` y `npm run db:setup`. La primera migración crea tablas, relaciones, restricciones e índices. La carga inicial es idempotente, contiene ejemplos y no sobrescribe datos.
-4. Crea el propietario con `npm run admin:create -- correo-del-propietario`. Conserva el secreto temporal en un gestor seguro; cámbialo al ingresar.
-5. Ejecuta `npm run typecheck`, `npm test`, `npm run build`. Arranca con `npm start` o utiliza la integración oficial de Next.js del proveedor.
-6. Configura dominio, certificado HTTPS y `NEXT_PUBLIC_SITE_URL` con el origen público exacto. Verifica las cookies Secure, encabezados y el rechazo de orígenes ajenos.
-7. Programa cada minuto `npm run stock:expire` usando la base de producción. La expiración también ocurre al crear pedidos, abrir un pedido o consultar el panel. El comando periódico evita reservas retenidas en períodos sin visitas.
-8. Sustituye los ejemplos por el catálogo real, completa los datos fiscales, políticas y opciones comerciales. No actives ventas hasta completar la lista de aceptación.
+Vercel: proyecto leytech, equipo alvaro-s-projects1, repositorio Alvaro-mendoza-12/Leytech. Next.js usa Node.js 24 LTS y funciones de servidor. GitHub Pages redirige a Vercel mediante index.html.
 
-Las imágenes locales de demostración no son fotografías del catálogo real. Los archivos de `public/uploads` no se transfieren automáticamente a Supabase. Reemplázalos o migra explícitamente sus rutas antes de desplegar. La subida en producción exige almacenamiento externo y nunca escribe en el disco efímero del servidor.
+El equipo está en Hobby para la revisión del sitio. Antes de operar comercialmente, usa un plan de alojamiento que lo permita. [Condiciones de uso comercial en Vercel](https://vercel.com/docs/limits/fair-use-guidelines#commercial-usage).
 
-## Variables de entorno
+Supabase: proyecto ujbocvvxyrvtbmxntmmm. Se usa el pooler transaccional con una cuenta técnica limitada a las tablas de Leytech, sin superusuario ni permisos para crear bases o roles. TLS valida certificado y nombre del servidor con la CA oficial de Supabase.
+
+Las migraciones 001, 002 y 003 están aplicadas. Las 16 tablas tienen RLS y los roles públicos anon/authenticated no tienen acceso. El navegador se comunica con Next.js, que valida sesión, rol, origen, contenido e inventario.
+
+Las fotografías se guardan en el bucket privado leytech-products. La aplicación admite JPEG, PNG y WebP hasta 4 MB. Las rutas /media sirven imágenes del catálogo sin exponer claves. El disco efímero de Vercel no guarda las subidas.
+
+## Variables privadas
 
 | Variable | Uso |
 | --- | --- |
-| `DATABASE_URL` | Conexión PostgreSQL privada; obligatoria en producción |
-| `DATABASE_SSL` | TLS verificado por defecto; `false` solo para desarrollo controlado |
-| `PGLITE_PATH` | Directorio local; ignorar en producción |
-| `NEXT_PUBLIC_SITE_URL` | Origen absoluto, sin barra final; debe coincidir con el navegador |
-| `MERCADOPAGO_MODE` | `sandbox` primero; `live` solo después de validación comercial |
-| `MERCADOPAGO_ACCESS_TOKEN` | Credencial privada del proveedor |
-| `MERCADOPAGO_WEBHOOK_SECRET` | Secreto HMAC de Webhooks |
-| `MERCADOPAGO_COLLECTOR_ID` | Identificador esperado del vendedor |
-| `STORAGE_SUPABASE_URL` | URL HTTPS `https://<proyecto>.supabase.co` |
-| `STORAGE_SERVICE_ROLE_KEY` | Clave privada, exclusiva del servidor |
-| `STORAGE_BUCKET` | Bucket privado de imágenes del catálogo |
-| `TRUST_PROXY` | `true` únicamente si tu proxy elimina y reescribe X-Forwarded-For |
+| DATABASE_URL | Cuenta técnica y pooler PostgreSQL |
+| DATABASE_SSL | true en producción |
+| DATABASE_CA_CERT_BASE64 | Certificado raíz oficial de Supabase en Base64 |
+| DATABASE_POOL_MAX | 1 por instancia |
+| STORAGE_SUPABASE_URL | URL HTTPS del proyecto |
+| SUPABASE_SECRET_KEY | Clave privada de Storage, exclusiva del servidor |
+| STORAGE_BUCKET | leytech-products |
+| TRUST_PROXY | false; Vercel se reconoce por su variable de sistema y reescribe la cabecera de IP |
 
-`NEXT_PUBLIC_SITE_URL` es público. Ninguna otra credencial debe llevar el prefijo NEXT_PUBLIC. Si no se confía en un proxy, el límite de intentos se comparte conservadoramente entre visitantes; para tráfico real configura un proxy propio y comprueba que no acepta cabeceras de IP falsificadas.
+El origen público se obtiene de VERCEL_PROJECT_PRODUCTION_URL y también se acepta el origen del despliegue específico de Vercel. Si se usa un dominio propio fuera de esa configuración, define NEXT_PUBLIC_SITE_URL con su origen HTTPS exacto. Ningún secreto debe llevar el prefijo NEXT_PUBLIC_.
 
-## Mercado Pago
+Los valores están guardados como variables sensibles de producción en Vercel. La copia local privada está en `.data/production.env`. Los previews no reciben automáticamente la conexión de producción.
 
-Se utiliza Checkout Pro alojado mediante Preferences API. No existe formulario propio de tarjetas. Configura Webhooks de pagos en `https://<dominio>/api/payments/webhook`. Debe llegar el parámetro `data.id`, `x-signature` y `x-request-id`. Se valida HMAC, antigüedad de cinco minutos, coincidencia del identificador y se consulta `/v1/payments/{id}` con la credencial privada.
+## Actualizaciones
 
-Antes de aplicar un pago se verifican moneda PEN, monto exacto del pedido, referencia interna, cuenta receptora y entorno. Las preferencias solo se crean con URL HTTPS. El retorno a `/pedido/<token>` consulta el estado guardado y no aprueba el pedido. Una notificación aprobada consume la reserva una sola vez; si llegó después de expirar, deja el pedido para revisión. Un reembolso o contracargo actualiza su estado, sin reponer stock automáticamente: requiere revisar la devolución física.
+Los productos, precios, fotos, inventario y políticas se editan en /admin. Los cambios de código se publican mediante el repositorio conectado o con `vercel deploy --prod --scope alvaro-s-projects1` desde esta instalación vinculada.
 
-Credenciales, cuentas de comprador/vendedor de prueba y dominio HTTPS no estaban disponibles. **No se ejecutó un cobro sandbox oficial.** Comprueba éxito, rechazo, abandono, notificación repetida, recuperación tras caída, cuenta/importe incorrectos y pago tardío antes de pasar a `live`. Se contempla estado de reembolso, pero su solicitud al proveedor debe gestionarse en Mercado Pago; no hay botón que simule un reembolso.
+Antes de publicar código ejecuta TypeScript, pruebas y compilación. Aplica las nuevas migraciones desde mantenimiento, después de revisarlas. El usuario técnico no es propietario del esquema y no ejecuta migraciones al arrancar.
 
-Referencias: [Preferencias de Checkout Pro](https://www.mercadopago.com.pe/developers/es/docs/checkout-pro-preferences/create-payment-preference), [Webhooks](https://www.mercadopago.com.pe/developers/es/docs/checkout-pro-preferences/additional-content/notifications/webhooks), [Almacenamiento privado Supabase](https://supabase.com/docs/guides/storage/serving/downloads).
+Los scripts prepare-supabase, configure-storage e initialize-production sirven para el aprovisionamiento inicial. La inicialización lee el correo del propietario desde LEYTECH_OWNER_EMAIL en el entorno de mantenimiento y conserva las contraseñas y borradores existentes.
 
-## Respaldos y mantenimiento
+## Ventas y atención
 
-PostgreSQL: activa snapshots y recuperación a un punto en el tiempo cuando el proveedor lo permita. Genera respaldos `pg_dump` en formato custom y prueba `pg_restore` sobre una base vacía de prueba. Define retención, cifrado, responsables y alertas de fallos. Se deben respaldar también imágenes, configuración y secretos mediante sus canales apropiados. Nunca vuelques datos personales en logs públicos.
+El canal es WhatsApp; no hacen falta Mercado Pago ni otra pasarela. El código legado de pagos en línea está fuera del flujo configurado y no tiene credenciales de producción.
 
-PGlite local: detén el único proceso que lo usa y copia `.data/leytech` a una ubicación de respaldo; prueba la copia en un directorio distinto con `PGLITE_PATH`. No se realizó una restauración operativa en este encargo.
+Una solicitud no reserva stock. El propietario registra un pedido después del acuerdo y confirma el pago con evidencia. La reserva vence a los 30 minutos y se libera al consultar el panel/pedido o iniciar solicitudes. El comando stock:expire permite liberarla desde mantenimiento. No se contrató un cron de pago.
 
-Establece monitoreo para errores 5xx, pagos en revisión, webhooks rechazados, tiempo de respuesta, reservas vencidas y solicitudes del libro. El panel muestra los últimos 200 pedidos/cotizaciones y 100 movimientos/eventos: sus indicadores cubren ese historial cargado, no una contabilidad completa. Para mayor volumen añade agregaciones SQL, exportación y paginación administrativa.
+El Libro guarda solicitudes e imprime constancias. No envía correos automáticamente. El propietario completará titular/RUC y demás datos desde el panel y debe revisar los requisitos aplicables. Las políticas iniciales son editables; no equivalen a una validación legal independiente.
 
-El email transaccional, recuperación automática de contraseñas y envío de constancias del libro por correo siguen pendientes de proveedor. Mientras no exista recuperación por email, crea un acceso de propietario nuevo desde el entorno de mantenimiento, desactiva la cuenta anterior y registra el incidente. Añade MFA antes de operaciones de mayor escala.
+## Respaldos y acceso
+
+El acceso inicial está en `.data/production-admin-access.txt`. El cambio de contraseña revoca las sesiones. No hay recuperación automática por email ni MFA en el panel: conserva un acceso seguro.
+
+Verifica respaldos y retención del plan contratado en Supabase. La copia SQL no incluye los objetos de Storage; respalda ambos por sus canales adecuados. Prueba la restauración en una base separada. No se declara una restauración ya validada.
+
+El panel carga hasta 1000 productos, 200 pedidos/solicitudes y 100 eventos recientes. Sus indicadores no sustituyen la contabilidad ni la facturación electrónica. Para mayor volumen añade paginación, agregaciones y monitoreo.
+
+Referencias: [PostgreSQL de Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres), [Storage privado](https://supabase.com/docs/guides/storage/serving/downloads), [Node.js en Vercel](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions).

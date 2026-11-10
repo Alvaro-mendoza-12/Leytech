@@ -389,6 +389,38 @@ small {
   height: 42px;
   object-fit: contain;
 }
+.official-logo {
+  position: relative;
+  display: block;
+  width: 108px;
+  height: 60px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f8f9f8;
+}
+.official-logo img {
+  position: absolute;
+  width: 145%;
+  max-width: none;
+  height: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -45.5%);
+}
+@media (max-width: 800px) {
+  .admin-sidebar .logo .official-logo {
+    width: 38px;
+    height: 38px;
+  }
+  .admin-sidebar .official-logo img {
+    width: 315%;
+    transform: translate(-50%, -38.4%);
+  }
+  .admin-sidebar .custom-logo {
+    max-width: 38px;
+    height: 38px;
+  }
+}
 .nav-last {
   margin-left: auto;
   display: flex;

@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, LoaderCircle } from "lucide-react";
-export function AdminLogin() {
+import { BrandLogo } from "../brand-logo";
+export function AdminLogin({ name, logoUrl }: { name: string; logoUrl: string }) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const router = useRouter();
@@ -34,12 +35,7 @@ export function AdminLogin() {
     <div className="login-page">
       <div className="login-brand">
         <img src="/images/setup.jpg" alt="" />
-        <Link href="/" className="logo">
-          <span className="logo-mark">
-            L<span />
-          </span>
-          Leytech<span className="logo-dot">.</span>
-        </Link>
+        <BrandLogo name={name} src={logoUrl} />
         <div>
           <h1>Tu próximo gran paso empieza aquí.</h1>
           <p>

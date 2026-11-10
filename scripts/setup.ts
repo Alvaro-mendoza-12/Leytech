@@ -3,10 +3,11 @@ import fs from "node:fs/promises";
 import { db } from "../src/lib/db";
 import { seed } from "./seed";
 async function main() {
-  await db.exec(await fs.readFile("migrations/001_initial.sql", "utf8"));
-  await seed();
+  const production=process.argv.includes('--production')||process.env.NODE_ENV==='production';
+  if(!process.argv.includes('--data-only'))for(const file of (await fs.readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())await db.exec(await fs.readFile(`migrations/${file}`,'utf8'));
+  await seed(!production);
   console.log(
-    "Migración 001 aplicada. Catálogo de ejemplo cargado sin reemplazar datos existentes.",
+    production?'Configuración de producción creada. No se publicaron productos ni existencias ficticias.':'Migraciones aplicadas. Catálogo de ejemplo cargado sin reemplazar datos existentes.',
   );
   await db.close();
 }

@@ -17,6 +17,7 @@ export function SalesManager({
   notify: (s: string) => void;
 }) {
   const [search, setSearch] = useState(""),
+    [converting,setConverting]=useState(false),
     [status, setStatus] = useState(""),
     [selected, setSelected] = useState<Order | null>(null),
     [quote, setQuote] = useState<Quote | null>(null),
@@ -162,7 +163,7 @@ export function SalesManager({
                         <td>
                           <button
                             className="icon-button"
-                            onClick={() => setQuote(q)}
+                            onClick={() => {setQuote(q);setError('');}}
                             aria-label={`Ver ${quoteCode(q.code)}`}
                           >
                             <Eye size={15} />
@@ -249,9 +250,9 @@ export function SalesManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {[...new Set(data.orders.map((o) => o.customer.email))]
-                    .map((email) =>
-                      data.orders.filter((o) => o.customer.email === email),
+                  {[...new Set(data.orders.map((o) => o.customer.email || o.customer.phone))]
+                    .map((contact) =>
+                      data.orders.filter((o) => (o.customer.email || o.customer.phone) === contact),
                     )
                     .filter((list) =>
                       `${list[0].customer.name} ${emailText(list)} ${list[0].customer.phone}`
@@ -259,7 +260,7 @@ export function SalesManager({
                         .includes(search.toLowerCase()),
                     )
                     .map((list) => (
-                      <tr key={list[0].customer.email}>
+                      <tr key={list[0].customer.email || list[0].customer.phone}>
                         <td>
                           <strong>{list[0].customer.name}</strong>
                           <small>
@@ -489,6 +490,7 @@ export function SalesManager({
           <p className="summary-note">
             {date(quote.created_at)} · Inventario sin reservar
           </p>
+          {data.orders.some(o=>(o as Order&{quote_id?:string}).quote_id===quote.id)?<div className="success-box">Esta solicitud ya tiene un pedido registrado. Puedes gestionarlo en Ventas → Pedidos.</div>:<form style={{marginTop:22}} onSubmit={async e=>{e.preventDefault();setConverting(true);setError('');const values=new FormData(e.currentTarget);try{const result=await adminApi('quotes/order',{quoteId:quote.id,name:values.get('name'),phone:values.get('phone'),email:values.get('email')||'',delivery:values.get('delivery'),address:values.get('address')||'',district:values.get('district')||'',shippingFee:Math.round(Number(values.get('shippingFee')||0)*100),agreement:values.get('agreement')});await refresh();setQuote(null);notify(`Pedido ${orderCode(result.code)} creado`);}catch(e){setError((e as Error).message);}finally{setConverting(false);}}}><h3>Registrar la venta acordada</h3><p className="summary-note">Completa esto después de que el cliente confirme la compra por WhatsApp. Se reserva el stock durante 30 minutos.</p><div className="form-grid"><label>Nombre del cliente<input name="name" minLength={3} maxLength={100} required/></label><label>Celular / WhatsApp<input name="phone" type="tel" required minLength={9}/></label><label>Correo (opcional)<input name="email" type="email"/></label><label>Entrega<select name="delivery" defaultValue={quote.items.every(i=>i.type==='digital')?'digital':'pickup'}><option value="pickup">Recojo coordinado</option><option value="shipping">Envío coordinado</option><option value="digital">Entrega digital</option></select></label><label>Dirección acordada<input name="address" maxLength={250}/></label><label>Distrito / ciudad<input name="district" maxLength={100}/></label><label>Costo de envío acordado (S/)<input name="shippingFee" type="number" min="0" step="0.01" defaultValue="0"/></label><label className="wide">Constancia del acuerdo<textarea name="agreement" minLength={10} maxLength={1000} required placeholder="Ej. Cliente confirmó productos, total y entrega por WhatsApp."/></label></div>{error&&<div className="error-box" role="alert">{error}</div>}<button className="btn btn-primary" style={{marginTop:18}} disabled={converting}>{converting?'Registrando…':'Crear pedido acordado'}</button></form>}
         </Modal>
       )}
       {claim && (

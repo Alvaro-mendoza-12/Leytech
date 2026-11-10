@@ -146,7 +146,7 @@ export default async function Home() {
           <ProductGrid products={featured.products.slice(0, 4)} />
         ) : (
           <p className="empty-inline">
-            Pronto encontrarás aquí nuestros productos destacados.
+            Estamos preparando nuestro catálogo. <a href={`https://wa.me/${s.whatsapp}`} target="_blank" rel="noreferrer">Consulta por WhatsApp el producto que buscas.</a>
           </p>
         )}
       </section>
@@ -175,7 +175,7 @@ export default async function Home() {
             Ver novedades <ArrowRight size={16} />
           </Link>
         </div>
-        <ProductGrid products={newest.products.slice(4, 8)} />
+        <ProductGrid products={newest.products.slice(0, 4)} />
       </section>
       <section className="container personal-help">
         <div className="personal-help-symbol">

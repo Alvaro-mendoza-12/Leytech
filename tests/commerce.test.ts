@@ -10,6 +10,7 @@ import {
   snapshot,
   createQuote,
   createOrder,
+  createOrderFromQuote,
   expireOrders,
 } from "../src/lib/commerce";
 import { verifyWebhook, applyVerifiedPayment } from "../src/lib/payments";
@@ -52,7 +53,7 @@ function orderInput(variantId = "demo-1-v1", quantity = 1) {
   };
 }
 before(async () => {
-  await db.exec(await fs.readFile("migrations/001_initial.sql", "utf8"));
+  for (const file of (await fs.readdir('migrations')).filter(f=>f.endsWith('.sql')).sort()) await db.exec(await fs.readFile(`migrations/${file}`, 'utf8'));
   await seed();
   await db.query(
     "INSERT INTO admins(id,email,password_hash) VALUES($1,$2,$3)",
@@ -486,15 +487,51 @@ test("pago tardío (fixture unitario): queda en revisión y no genera stock nega
   assert.equal(v.stock, 6);
   assert.equal(v.reserved, 0);
 });
-test("configuración: no habilita ventas sin datos legales ni transferencia sin cuenta", async () => {
+test("configuración: WhatsApp no exige pasarela; checkout y transferencia conservan sus requisitos", async () => {
   const s = await settings();
   assert.equal(
-    settingsSchema.safeParse({ ...s, demoMode: false, salesEnabled: true })
+    settingsSchema.safeParse({ ...s, orderChannel:'online', demoMode: false, salesEnabled: true })
       .success,
     false,
   );
+  assert.equal(settingsSchema.safeParse({...s,orderChannel:'whatsapp',demoMode:false,salesEnabled:true}).success,true);
   assert.equal(
     settingsSchema.safeParse({ ...s, transferEnabled: true }).success,
     false,
   );
+});
+
+test('WhatsApp en producción: oculta ejemplos y registra pedidos acordados sin duplicar reservas', async () => {
+ const s=await settings();
+ await db.query("UPDATE settings SET value=$1 WHERE id='store'",[JSON.stringify({...s,demoMode:false,orderChannel:'whatsapp',salesEnabled:true})]);
+ try {
+  assert.equal(await productBySlug('audifonos-inalambricos-studio'),null);
+  assert.equal((await products({q:'Leytech Select'})).total,0);
+  await assert.rejects(snapshot({items:[{variantId:'demo-1-v1',quantity:1}]}),/ejemplo/);
+  const product=await productBySlug('mouse-aceptacion');assert.ok(product);
+  const variant=product.variants.find(v=>v.sku==='ACEPT-NEGRO')!;
+  await assert.rejects(createOrder({...orderInput(variant.id),customer:{...customer,email:''}}),/WhatsApp/);
+  const quote=await createQuote({items:[{variantId:variant.id,quantity:2}]});
+  assert.ok(quote.url.startsWith('https://wa.me/51905886853'));
+  const quoteId=(await db.query<{id:string}>('SELECT id FROM quotes ORDER BY created_at DESC LIMIT 1')).rows[0].id;
+  const input={quoteId,name:'Cliente WhatsApp',phone:'999999999',email:'',delivery:'shipping',address:'Dirección de prueba 123',district:'Chiclayo',shippingFee:1200,agreement:'Cliente confirmó el total y el envío por WhatsApp.'};
+  const order=await createOrderFromQuote(input,owner);
+  assert.equal(order.total,2*variant.price+1200);assert.equal(order.is_demo,false);
+  assert.equal((await createOrderFromQuote(input,owner)).id,order.id);
+  assert.equal((await db.query<Variant>('SELECT * FROM variants WHERE id=$1',[variant.id])).rows[0].reserved,2);
+  const stored=(await db.query<Order&{quote_id:string}>('SELECT * FROM orders WHERE id=$1',[order.id])).rows[0];assert.equal(stored.quote_id,quoteId);
+  await updateOrder(order.id,'cancelled','Cierre del caso de prueba WhatsApp',owner);
+  const changed=await createQuote({items:[{variantId:variant.id,quantity:1}]});
+  assert.ok(changed.code);
+  const changedId=(await db.query<{id:string}>('SELECT id FROM quotes ORDER BY created_at DESC LIMIT 1')).rows[0].id;
+  await db.query('UPDATE variants SET price=price+100 WHERE id=$1',[variant.id]);
+  await assert.rejects(createOrderFromQuote({...input,quoteId:changedId},owner),/precio cambió/);
+ } finally {await db.query("UPDATE settings SET value=$1 WHERE id='store'",[JSON.stringify(s)]);}
+});
+
+test('un borrador de ejemplo requiere revisar los datos antes de publicarlo como producto real',async()=>{
+ const example=await productBySlug('mouse-inalambrico-precision',true);assert.ok(example);
+ await assert.rejects(saveProduct({...example,status:'published'},owner),/Confirma/);
+ await saveProduct({...example,status:'published',confirmRealProduct:true},owner);
+ assert.equal((await productBySlug(example.slug,true))?.is_demo,false);
 });

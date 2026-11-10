@@ -6,6 +6,7 @@ import {
 } from "node:crypto";
 import { db, type Queryable } from "./db";
 import type { Admin } from "./types";
+import {trustedOrigins} from './site';
 export class AppError extends Error {
   constructor(
     message: string,
@@ -40,10 +41,7 @@ export async function sessionAdmin(token?: string) {
 }
 export function checkOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  const expected = new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-  ).origin;
-  if (!origin || origin !== expected)
+  if (!origin || !trustedOrigins().has(origin))
     throw new AppError("Origen de la solicitud no permitido.", 403);
 }
 export async function rateLimit(
@@ -54,7 +52,7 @@ export async function rateLimit(
   identity = "",
 ) {
   const ip =
-    process.env.TRUST_PROXY === "true"
+    (process.env.VERCEL === "1" || process.env.TRUST_PROXY === "true")
       ? request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
         "unknown"
       : "local";

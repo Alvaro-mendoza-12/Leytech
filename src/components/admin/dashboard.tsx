@@ -24,6 +24,7 @@ import { CatalogManager } from "./catalog-manager";
 import { SalesManager } from "./sales-manager";
 import { SettingsManager } from "./settings-manager";
 import type { AdminData } from "./api";
+import { BrandLogo } from "../brand-logo";
 const menu = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard, tabs: [] },
   {
@@ -36,7 +37,7 @@ const menu = [
     id: "ventas",
     label: "Ventas",
     icon: ShoppingBag,
-    tabs: ["pedidos", "cotizaciones", "pagos", "reclamaciones"],
+    tabs: ["pedidos", "cotizaciones", "reclamaciones"],
   },
   { id: "clientes", label: "Clientes", icon: Users, tabs: [] },
   { id: "marketing", label: "Marketing", icon: Megaphone, tabs: ["inicio"] },
@@ -46,7 +47,7 @@ const menu = [
     icon: Settings,
     tabs: [
       "negocio",
-      "pagos",
+      "whatsapp",
       "entregas",
       "politicas",
       "usuarios",
@@ -60,7 +61,8 @@ const labels: Record<string, string> = {
   inventario: "Inventario",
   marcas: "Marcas",
   pedidos: "Pedidos",
-  cotizaciones: "Cotizaciones",
+  cotizaciones: "Solicitudes de WhatsApp",
+  whatsapp:'Ventas por WhatsApp',
   pagos: "Pagos",
   reclamaciones: "Reclamaciones",
   inicio: "Página de inicio",
@@ -118,12 +120,7 @@ export function Dashboard() {
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">
-        <Link href="/" className="logo">
-          <span className="logo-mark">
-            L<span />
-          </span>
-          Leytech<span className="logo-dot">.</span>
-        </Link>
+        <BrandLogo name={data?.settings.name} src={data?.settings.logoUrl} />
         <p className="admin-caption">Tu negocio, bajo control.</p>
         <nav className="admin-nav" aria-label="Panel administrativo">
           {menu.map((m) => (
@@ -298,6 +295,12 @@ export function Dashboard() {
                         ejemplo y los pagos reales están deshabilitados.
                         Completa la información comercial en Configuración antes
                         del lanzamiento.
+                      </div>
+                    )}
+                    {!data.settings.demoMode && (!data.settings.legalName || !data.settings.ruc || !data.settings.address || !data.settings.email) && (
+                      <div className="info-box">
+                        Completa el titular, RUC, dirección y correo de atención en Configuración → Negocio.
+                        El catálogo real se publica desde Catálogo → Productos. Los ejemplos son borradores editables.
                       </div>
                     )}
                     <div className="admin-columns">

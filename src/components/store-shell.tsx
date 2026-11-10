@@ -14,6 +14,7 @@ import {
 import type { Category, StoreSettings } from "@/lib/types";
 import { CartLink } from "./store-ui";
 import { CategoryIcon } from "./icons";
+import { BrandLogo } from "./brand-logo";
 export function StoreHeader({
   settings: s,
   categories,
@@ -41,19 +42,7 @@ export function StoreHeader({
       </div>
       <header className="store-header">
         <div className="container header-main">
-          <Link href="/" className="logo" aria-label="Leytech, inicio">
-            {s.logoUrl ? (
-              <img className="custom-logo" src={s.logoUrl} alt={s.name} />
-            ) : (
-              <>
-                <span className="logo-mark">
-                  L<span />
-                </span>
-                {s.name}
-                <span className="logo-dot">.</span>
-              </>
-            )}
-          </Link>
+          <BrandLogo name={s.name} src={s.logoUrl} />
           <form action="/catalogo" className="search-bar" role="search">
             <Search size={20} />
             <input
@@ -115,19 +104,7 @@ export function StoreFooter({ settings: s }: { settings: StoreSettings }) {
     <footer className="footer">
       <div className="container footer-top">
         <div>
-          <Link href="/" className="logo">
-            {s.logoUrl ? (
-              <img className="custom-logo" src={s.logoUrl} alt={s.name} />
-            ) : (
-              <>
-                <span className="logo-mark">
-                  L<span />
-                </span>
-                {s.name}
-                <span className="logo-dot">.</span>
-              </>
-            )}
-          </Link>
+          <BrandLogo name={s.name} src={s.logoUrl} />
           <p>
             {s.tagline}
             <br />
