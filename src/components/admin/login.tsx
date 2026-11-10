@@ -83,8 +83,7 @@ export function AdminLogin({ name, logoUrl }: { name: string; logoUrl: string })
             </button>
           </form>
           <small>
-            Acceso exclusivo para personal autorizado. Si necesitas recuperar tu
-            acceso, contacta al propietario de la tienda.
+            Usa tu acceso de Leytech o la cuenta de Supabase autorizada para este panel. Si necesitas ayuda, contacta al propietario.
           </small>
           <Link href="/" className="login-back">
             <ArrowLeft size={14} /> Volver a la tienda

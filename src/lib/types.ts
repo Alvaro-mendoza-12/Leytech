@@ -85,7 +85,7 @@ export type StoreSettings = {
   heroSubtitle: string;
   policies: Record<string, string>;
 };
-export type Admin = { id: string; email: string; role: "owner" | "staff" };
+export type Admin = { id: string; email: string; role: "owner" | "staff"; authProvider?: "local" | "supabase" };
 export type Order = {
   id: string;
   code: string;

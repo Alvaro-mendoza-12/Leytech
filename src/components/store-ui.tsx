@@ -79,10 +79,10 @@ export function ProductCard({
               <Link
                 key={i.id}
                 href={`/producto/${p.slug}?variante=${i.id}`}
-                title={`${i.color}${!p.is_demo && i.stock - i.reserved === 0 ? " (agotado)" : ""}`}
+                title={`${i.color}${i.stock - i.reserved === 0 ? " (agotado)" : ""}`}
                 aria-label={`Ver ${p.name} en ${i.color}`}
                 style={{ background: i.color_hex }}
-                className={!p.is_demo && i.stock - i.reserved === 0 ? "out" : ""}
+                className={i.stock - i.reserved === 0 ? "out" : ""}
               />
             ))}
           {p.variants.length > 1 && <small>{p.variants.length} colores</small>}
@@ -96,7 +96,7 @@ export function ProductCard({
             className="quick-add"
             title={`Agregar ${p.name} (${v.name})`}
             aria-label={`Agregar ${p.name} al carrito`}
-            disabled={!p.is_demo && !stock}
+            disabled={!stock}
             onClick={() =>
               cart.add({
                 variantId: v.id,
@@ -106,7 +106,7 @@ export function ProductCard({
                 price: v.price,
                 image: v.image || p.images[0],
                 slug: p.slug,
-                max: p.is_demo ? 99 : v.stock - v.reserved,
+                max: Math.min(99, v.stock - v.reserved),
                 isSample: p.is_demo,
               })
             }
@@ -114,10 +114,10 @@ export function ProductCard({
             <Plus size={20} />
           </button>
         </div>
-        {p.is_demo ? <small className="image-note">Precio referencial · consulta disponibilidad</small> : (
+        {p.is_demo ? <small className="image-note">Stock de muestra: {stock} · precio referencial</small> : (
           <span className={`stock-label ${stock ? "" : "no-stock"}`}>
             <span />
-            {stock ? "Disponible" : "Agotado"}
+            {stock ? `Stock disponible: ${stock}` : "Agotado"}
           </span>
         )}
       </div>

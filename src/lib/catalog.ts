@@ -32,7 +32,7 @@ export function visibleProduct(parameter: string) {
 }
 
 function publicVariants(variants: Variant[], sample: boolean) {
-  return sample ? variants.map(v => ({ ...v, stock: 0, reserved: 0, compare_at: null })) : variants;
+  return sample ? variants.map(v => ({ ...v, compare_at: null })) : variants;
 }
 export async function categories(all = false) {
   return (

@@ -155,10 +155,10 @@ export function CatalogManager({
                         )}
                       </td>
                       <td>
-                        {p.is_demo ? "Por consultar" : p.variants
+                        {p.variants
                           .filter((v) => v.active)
                           .reduce((s, v) => s + v.stock - v.reserved, 0)}
-                        <small>{p.variants.length} variantes</small>
+                        <small>{p.is_demo ? "Stock de muestra · " : ""}{p.variants.length} variantes</small>
                       </td>
                       <td>
                         <span className={`badge ${visible ? "published" : p.status}`}>

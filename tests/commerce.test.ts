@@ -558,9 +558,13 @@ test("las muestras visibles pueden cotizarse sin publicar borradores reales ni r
     assert.equal(await productBySlug("mouse-aceptacion"), null);
     const sample = await productBySlug(slug);
     assert.ok(sample?.is_demo);
-    assert.ok(sample.variants.every(v => v.stock === 0 && v.reserved === 0));
     const before = (await productBySlug(slug, true))!.variants;
-    const quote = await createQuote({ items: [{ variantId: sample.variants[0].id, quantity: 9 }] });
+    const variant = sample.variants.find(v => v.stock > 0)!;
+    const tooMany = { items: [{ variantId: variant.id, quantity: variant.stock + 1 }] };
+    await assert.rejects(createQuote(tooMany), /quedan/);
+    const reconciled = await snapshot(tooMany, db, { allowSamples: true, adjustToStock: true });
+    assert.equal(reconciled[0].quantity, variant.stock);
+    const quote = await createQuote({ items: [{ variantId: variant.id, quantity: 2 }] });
     assert.match(new URL(quote.url).searchParams.get("text") || "", /\(muestra\).*Precio referencial/s);
     assert.deepEqual((await productBySlug(slug, true))!.variants, before);
     await db.query("UPDATE settings SET value=jsonb_set(value, '{showSamples}', 'false') WHERE id='store'");

@@ -25,11 +25,13 @@ import {
   hash,
   audit,
 } from "@/lib/security";
-import { settingsSchema, claimSchema } from "@/lib/validation";
+import { settingsSchema, claimSchema, cartSchema } from "@/lib/validation";
 import { saveProduct, updateOrder } from "@/lib/admin";
 import type { Admin, Order } from "@/lib/types";
 import { uploadObject } from "@/lib/storage";
 import { markChanged, readRevision } from "@/lib/revisions";
+import { addSupabaseAdmin, authenticateAdmin } from "@/lib/panel-auth";
+import { confirmedSupabaseUser, publicSignupDisabled } from "@/lib/supabase-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,9 +69,12 @@ async function route(
     }
     if (resource === "cart/validate" && method === "POST") {
       await rateLimit(request, "cart", 100);
-      const items = await snapshot(await jsonBody(request), db, true);
+      const input = cartSchema.parse(await jsonBody(request));
+      const adjustToStock = new URL(request.url).searchParams.get("adjust") === "1";
+      const items = await snapshot(input, db, { allowSamples: true, adjustToStock });
       return ok({
         items,
+        adjusted: items.reduce((sum, item) => sum + item.quantity, 0) !== input.items.reduce((sum, item) => sum + item.quantity, 0),
         subtotal: items.reduce((s, i) => s + i.price * i.quantity, 0),
       });
     }
@@ -154,25 +159,13 @@ async function route(
         .parse(await jsonBody(request));
       await rateLimit(request, "login-global", 30, 900);
       await rateLimit(request, "login", 8, 900, data.email.toLowerCase());
-      const admin = (
-        await db.query<Admin & { password_hash: string }>(
-          "SELECT * FROM admins WHERE email=$1 AND active=true",
-          [data.email.toLowerCase()],
-        )
-      ).rows[0];
-      if (
-        !verifyPassword(
-          data.password,
-          admin?.password_hash ||
-            "00000000000000000000000000000000:" + "00".repeat(64),
-        ) ||
-        !admin
-      )
-        throw new AppError("Correo o contraseña incorrectos.", 401);
+      const login = await authenticateAdmin(data.email.toLowerCase(), data.password);
+      if (!login) throw new AppError("Correo o contraseña incorrectos, o acceso aún no autorizado en Leytech.", 401);
+      const { admin, expiresIn } = login;
       const token = randomBytes(32).toString("hex");
       await db.query(
-        "INSERT INTO sessions(token_hash,admin_id,expires_at) VALUES($1,$2,now()+interval '8 hours')",
-        [hash(token), admin.id],
+        "INSERT INTO sessions(token_hash,admin_id,expires_at) VALUES($1,$2,now()+$3*interval '1 second')",
+        [hash(token), admin.id, expiresIn],
       );
       await audit(admin.id, "auth.login", admin.id);
       const response = ok({ success: true });
@@ -181,7 +174,7 @@ async function route(
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
         path: "/",
-        maxAge: 28800,
+        maxAge: expiresIn,
       });
       return response;
     }
@@ -223,6 +216,7 @@ async function route(
         db.query("SELECT * FROM claims ORDER BY created_at DESC LIMIT 100"),
         db.query("SELECT id,email,role,active FROM admins ORDER BY email"),
         online ? db.query("SELECT * FROM payments ORDER BY updated_at DESC LIMIT 100") : { rows: [] },
+        admin.role === "owner" ? db.query("SELECT id FROM settings WHERE id='auth:auto-staff'") : { rows: [] },
       ]);
       return ok({
         revision,
@@ -237,6 +231,7 @@ async function route(
         claims: result[7].rows,
         users: admin.role === "owner" ? result[8].rows : [],
         payments: result[9].rows,
+        autoSupabaseStaff: result[10].rows.length > 0,
       });
     }
     if (resource === "admin/products" && method === "POST")
@@ -365,6 +360,8 @@ async function route(
       return ok({ success: true });
     }
     if (resource === "admin/password" && method === "POST") {
+      if (admin.authProvider === "supabase")
+        throw new AppError("La contraseña de esta cuenta se gestiona en Supabase Auth.", 409);
       await rateLimit(request, "password-change", 5, 900, admin.id);
       const d = z
         .object({
@@ -460,16 +457,38 @@ async function route(
     }
     if (resource === "admin/users" && method === "POST") {
       const d = z
-        .object({ email: z.email().max(150), role: z.enum(["owner", "staff"]) })
+        .object({ email: z.email().max(150), role: z.enum(["owner", "staff"]), supabaseId: z.uuid().optional() })
         .parse(await jsonBody(request));
+      const email = d.email.toLowerCase();
+      if (d.supabaseId) {
+        const identity = await confirmedSupabaseUser(d.supabaseId, email);
+        const created = await addSupabaseAdmin(email, identity.id, d.role, admin.id);
+        if (!created) throw new AppError("Ese correo ya tiene un acceso en Leytech.", 409);
+        return ok({ linked: true });
+      }
       const id = crypto.randomUUID(),
         password = randomBytes(18).toString("base64url");
       await db.query(
         "INSERT INTO admins(id,email,password_hash,role) VALUES($1,$2,$3,$4)",
-        [id, d.email.toLowerCase(), hashPassword(password), d.role],
+        [id, email, hashPassword(password), d.role],
       );
       await audit(admin.id, "user.created", id);
       return ok({ password });
+    }
+    if (resource === "admin/users/supabase-auto" && method === "POST") {
+      const { enabled } = z.object({ enabled: z.boolean() }).parse(await jsonBody(request));
+      if (enabled && !(await publicSignupDisabled()))
+        throw new AppError("Desactiva el registro público y el acceso anónimo en Supabase Auth antes de activar esta opción.", 409);
+      await db.transaction(async tx => {
+        if (enabled) {
+          await tx.query("INSERT INTO settings(id,value) VALUES('auth:auto-staff',$1) ON CONFLICT DO NOTHING",
+            [JSON.stringify({ start: new Date().toISOString() })]);
+        } else {
+          await tx.query("DELETE FROM settings WHERE id='auth:auto-staff'");
+        }
+        await audit(admin.id, "user.supabase_auto", admin.id, { enabled }, tx);
+      });
+      return ok({ success: true });
     }
     if (resource === "admin/users/toggle" && method === "POST") {
       const d = z

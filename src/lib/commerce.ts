@@ -10,7 +10,7 @@ import { markChanged } from "./revisions";
 export async function snapshot(
   input: unknown,
   q: Queryable = db,
-  allowSamples = false,
+  { allowSamples = false, adjustToStock = false } = {},
 ): Promise<SnapshotLine[]> {
   const { items } = cartSchema.parse(input);
   const config=await settings(q);
@@ -43,14 +43,16 @@ export async function snapshot(
       [variantId, samplesVisible],
     );
     const v = rows[0];
+    if (adjustToStock && (!v || (v.is_demo && !config.demoMode && !samplesVisible))) continue;
     if (!v)
       throw new AppError(
         "Un producto ya no está disponible. Retíralo del carrito.",
       );
     if (v.is_demo && !config.demoMode && !samplesVisible)
       throw new AppError("Este producto es un ejemplo y no está disponible para ventas.");
-    const available = v.is_demo && allowSamples ? 99 : v.stock - v.reserved;
-    if (available < item.quantity)
+    const available = Math.min(99, v.stock - v.reserved);
+    if (adjustToStock && available === 0) continue;
+    if (!adjustToStock && available < item.quantity)
       throw new AppError(
         `${v.product_name} (${v.name}): quedan ${v.stock - v.reserved} unidades.`,
         409,
@@ -63,7 +65,7 @@ export async function snapshot(
       variant: v.name,
       sku: v.sku,
       price: v.price,
-      quantity: item.quantity,
+      quantity: adjustToStock ? Math.min(item.quantity, available) : item.quantity,
       image: v.image || v.images[0] || "/images/placeholder.svg",
       type: v.type,
       available,
@@ -90,7 +92,7 @@ export async function createQuote(input: unknown) {
     if (config.orderChannel === "whatsapp" && !config.demoMode && !config.salesEnabled) {
       throw new AppError("Leytech pausó las solicitudes de compra. Escríbenos por WhatsApp si tienes preguntas.", 409);
     }
-    const items = await snapshot(input, tx, true);
+    const items = await snapshot(input, tx, { allowSamples: true });
     if (items.some((i) => i.priceChanged))
       throw new AppError(
         "El precio cambió. Actualiza el carrito y revisa el total antes de cotizar.",

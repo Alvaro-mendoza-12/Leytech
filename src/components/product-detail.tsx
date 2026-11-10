@@ -36,7 +36,7 @@ export function ProductDetail({
     [quote, setQuote] = useState<{ code: string; url: string; variantId: string; price: number; quantity: number } | null>(null);
   const cart = useCart();
   if (!v) return <p>Este producto no tiene variantes publicadas.</p>;
-  const available = p.is_demo ? 99 : v.stock - v.reserved;
+  const available = v.stock - v.reserved;
   const quantity = Math.max(1, Math.min(requestedQuantity, available, 99));
   async function quoteProduct() {
     setLoading(true);
@@ -122,7 +122,7 @@ export function ProductDetail({
               {p.variants.map((i) => (
                 <button
                   key={i.id}
-                  className={`variant-option ${i.id === v.id ? "selected" : ""} ${!p.is_demo && i.stock - i.reserved === 0 ? "unavailable" : ""}`}
+                  className={`variant-option ${i.id === v.id ? "selected" : ""} ${i.stock - i.reserved === 0 ? "unavailable" : ""}`}
                   onClick={() => {
                     setVariantId(i.id);
                     setQuantity(1);
@@ -132,17 +132,17 @@ export function ProductDetail({
                 >
                   {i.color && <i style={{ background: i.color_hex }} />}
                   {i.name}
-                  {!p.is_demo && i.stock - i.reserved === 0 && <small>Agotado</small>}
+                  {i.stock - i.reserved === 0 && <small>Agotado</small>}
                 </button>
               ))}
             </div>
           </div>
-          {p.is_demo ? <p className="image-note">Precio referencial. Consulta disponibilidad por WhatsApp.</p> : <p className={`availability ${available ? "" : "sold-out"}`}>
+          <p className={`availability ${available ? "" : "sold-out"}`}>
             {available ? <Check size={17} /> : <span>×</span>}
             {available
-              ? `${available} unidades disponibles`
+              ? p.is_demo ? `${available} unidades de muestra` : `${available} unidades disponibles`
               : "Esta variante está agotada"}
-          </p>}
+          </p>
           <div className="purchase-row">
             <div className="quantity">
               <button
@@ -156,7 +156,8 @@ export function ProductDetail({
                 aria-label="Cantidad"
                 type="number"
                 min={1}
-                max={Math.min(available, 99)}
+                max={Math.max(1, Math.min(available, 99))}
+                disabled={available === 0}
                 value={quantity}
                 onChange={(e) =>
                   setQuantity(
@@ -189,7 +190,7 @@ export function ProductDetail({
                   variant: v.name,
                   image: v.image || p.images[0],
                   slug: p.slug,
-                  max: available,
+                  max: Math.min(available, 99),
                   isSample: p.is_demo,
                 })
               }

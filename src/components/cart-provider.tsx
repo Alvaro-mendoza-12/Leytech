@@ -72,8 +72,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const add = useCallback(
     (item: StoredLine) => {
       const previous = items.find((x) => x.variantId === item.variantId);
-      if ((previous?.quantity || 0) + item.quantity > item.max) {
-        setNotice("La cantidad supera el stock disponible.");
+      const limit = Math.min(99, item.max);
+      if ((previous?.quantity || 0) + item.quantity > limit) {
+        setNotice(`Máximo ${limit} unidades de esta variante.`);
         return false;
       }
       setItems((current) => {
@@ -83,11 +84,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
               x.variantId === item.variantId
                 ? {
                     ...item,
-                    quantity: Math.min(item.max, x.quantity + item.quantity),
+                    max: limit,
+                    quantity: Math.min(limit, x.quantity + item.quantity),
                   }
                 : x,
             )
-          : [...current, item];
+          : [...current, { ...item, max: limit }];
       });
       setNotice(`${item.name} se agregó al carrito`);
       return true;

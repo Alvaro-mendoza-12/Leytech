@@ -12,6 +12,8 @@ Publicada en Vercel con PostgreSQL y almacenamiento privado de Supabase. El modo
 
 El acceso inicial de producción está en el archivo local privado `.data/production-admin-access.txt`, excluido de GitHub. Cambia la contraseña en Configuración → Seguridad al ingresar.
 
+En **Configuración → Usuarios** el propietario puede vincular una cuenta confirmada de Supabase Auth por correo e ID. El acceso automático de nuevas cuentas les asigna el rol Personal y requiere desactivar el registro público y anónimo en Supabase antes de activarlo. La contraseña de esas cuentas se gestiona en Supabase.
+
 1. En Catálogo → Productos puedes crear productos o editar las 12 muestras. Para convertir una muestra en un producto real, revisa sus datos en el paso Revisión y elige Publicar en la tienda. Puedes ocultar las muestras desde Configuración → Negocio.
 2. Completa titular, RUC, dirección comercial y correo de atención en Configuración → Negocio. El propietario agregará estos datos desde el panel.
 3. Configura logo, color, portada, categorías, inventario, WhatsApp y políticas desde el panel. Los cambios de contenido no requieren desplegar código.
@@ -22,7 +24,7 @@ El pago, el costo de envío y el plazo se acuerdan por WhatsApp. La web no solic
 
 La tienda y el panel comprueban cambios cada 10 segundos mientras la pestaña está visible. Al guardar productos, precios, stock o marca, la tienda abierta se actualiza sin recargar manualmente. Las solicitudes nuevas aparecen en el panel automáticamente. Cambia o restaura el logo desde **Configuración → Negocio**.
 
-El catálogo público distingue las muestras con una etiqueta y precios referenciales. Confirma su disponibilidad en WhatsApp.
+El catálogo público distingue las muestras con una etiqueta, stock de muestra y precios referenciales. Cada variante del carrito está limitada a su stock configurado. Confirma la disponibilidad para la venta en WhatsApp.
 
 ## Desarrollo local
 

@@ -24,6 +24,7 @@ export function SettingsManager({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [newUser, setNewUser] = useState(false),
+    [supabaseAccount, setSupabaseAccount] = useState(false),
     [password, setPassword] = useState("");
   const router = useRouter();
   const owner = data.admin.role === "owner";
@@ -100,7 +101,7 @@ export function SettingsManager({
     return (
       <div className="info-box">
         Esta configuración está disponible para el propietario. Puedes gestionar
-        productos, inventario, pedidos y cotizaciones con tu rol de personal.
+        productos, inventario y cotizaciones con tu rol de personal.
       </div>
     );
   return (
@@ -116,6 +117,7 @@ export function SettingsManager({
               className="btn btn-primary"
               onClick={() => {
                 setNewUser(true);
+                setSupabaseAccount(false);
                 setPassword("");
                 setError("");
               }}
@@ -123,6 +125,25 @@ export function SettingsManager({
               <Plus size={16} /> Crear usuario
             </button>
           </div>
+          <section className="info-box">
+            <p>Para cuentas creadas en Supabase, vincula su correo e ID o activa el acceso automático para nuevas cuentas de Personal. El modo automático requiere cerrar el registro público en Supabase antes de activarlo.</p>
+            <button type="button" className="btn btn-outline" disabled={busy} onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                await adminApi("users/supabase-auto", { enabled: !data.autoSupabaseStaff });
+                await refresh();
+                notify("Acceso automático actualizado");
+              } catch (e) {
+                setError((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}>
+              {data.autoSupabaseStaff ? "Desactivar acceso automático" : "Activar acceso automático de Supabase"}
+            </button>
+            {!newUser && error && <p role="alert">{error}</p>}
+          </section>
           <div className="admin-panel">
             <div className="table-scroll">
               <table>
@@ -176,6 +197,12 @@ export function SettingsManager({
         </>
       ) : tab === "seguridad" ? (
         <div className="admin-settings-form">
+          {data.admin.authProvider === "supabase" ? (
+            <section className="form-panel">
+              <h2>Cuenta de Supabase</h2>
+              <p>Esta cuenta usa la contraseña configurada en Supabase Auth. Gestiona su contraseña desde Supabase.</p>
+            </section>
+          ) : (
           <form
             className="form-panel"
             style={{ background: "white" }}
@@ -230,6 +257,7 @@ export function SettingsManager({
               <ShieldCheck size={16} /> Actualizar contraseña
             </button>
           </form>
+          )}
         </div>
       ) : (
         <form className="admin-settings-form" onSubmit={save}>
@@ -500,9 +528,13 @@ export function SettingsManager({
                   const result = await adminApi("users", {
                     email: f.get("email"),
                     role: f.get("role"),
+                    supabaseId: supabaseAccount ? String(f.get("supabaseId") || "").trim() : undefined,
                   });
                   await refresh();
-                  setPassword(result.password);
+                  if (result.linked) {
+                    setNewUser(false);
+                    notify("Cuenta de Supabase vinculada");
+                  } else setPassword(result.password);
                 } catch (e) {
                   setError((e as Error).message);
                 } finally {
@@ -512,9 +544,20 @@ export function SettingsManager({
             >
               <div className="form-grid">
                 <label className="wide">
+                  Tipo de acceso
+                  <select value={supabaseAccount ? "supabase" : "local"} onChange={e => setSupabaseAccount(e.target.value === "supabase")}>
+                    <option value="local">Crear contraseña de Leytech</option>
+                    <option value="supabase">Vincular cuenta de Supabase</option>
+                  </select>
+                </label>
+                <label className="wide">
                   Correo electrónico
                   <input type="email" name="email" required />
                 </label>
+                {supabaseAccount && <label className="wide">
+                  ID del usuario en Supabase Auth
+                  <input name="supabaseId" required minLength={36} maxLength={36} />
+                </label>}
                 <label className="wide">
                   Rol
                   <select name="role">
@@ -533,7 +576,7 @@ export function SettingsManager({
                 style={{ marginTop: 20 }}
                 disabled={busy}
               >
-                Crear usuario
+                {supabaseAccount ? "Vincular cuenta" : "Crear usuario"}
               </button>
             </form>
           )}

@@ -34,7 +34,10 @@ export async function sessionAdmin(token?: string) {
   return (
     (
       await db.query<Admin>(
-        `SELECT a.id,a.email,a.role FROM sessions s JOIN admins a ON a.id=s.admin_id WHERE s.token_hash=$1 AND s.expires_at>now() AND a.active=true`,
+        `SELECT a.id,a.email,a.role,CASE WHEN link.id IS NULL THEN 'local' ELSE 'supabase' END AS "authProvider"
+         FROM sessions s JOIN admins a ON a.id=s.admin_id
+         LEFT JOIN settings link ON link.id='auth:admin:' || a.id
+         WHERE s.token_hash=$1 AND s.expires_at>now() AND a.active=true`,
         [hash(token)],
       )
     ).rows[0] || null

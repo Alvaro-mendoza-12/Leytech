@@ -25,7 +25,7 @@ export function CartPage({ revision }: { revision: string }) {
     [quote, setQuote] = useState<{ code: string; url: string } | null>(null);
   async function validate(signal?: AbortSignal) {
     const items = cart.items;
-    const res = await fetch("/api/cart/validate", {
+    const res = await fetch("/api/cart/validate?adjust=1", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),
@@ -39,7 +39,10 @@ export function CartPage({ revision }: { revision: string }) {
     if (signal?.aborted) return;
     cart.replace(data.items, items);
     setAvailabilityError("");
-    if (changed) {
+    if (data.adjusted) {
+      setQuote(null);
+      cart.setNotice("Ajustamos el carrito al stock disponible. Revisa las cantidades.");
+    } else if (changed) {
       setQuote(null);
       cart.setNotice("Se actualizaron los precios. Revisa el nuevo total.");
     }
@@ -73,8 +76,7 @@ export function CartPage({ revision }: { revision: string }) {
       setQuote(data);
     } catch (e) {
       setError((e as Error).message);
-      if ((e as Error).message.includes("precio"))
-        await validate().catch(() => {});
+      await validate().catch(() => {});
     } finally {
       setBusy("");
     }

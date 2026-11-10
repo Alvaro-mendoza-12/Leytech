@@ -10,6 +10,7 @@ export async function adminApi(path: string, data: unknown) {
 }
 export type AdminData = {
   revision: string;
+  autoSupabaseStaff: boolean;
   admin: import("@/lib/types").Admin;
   products: import("@/lib/types").Product[];
   categories: import("@/lib/types").Category[];
