@@ -47,7 +47,7 @@ export async function publicSignupDisabled() {
   const response = await authRequest("/settings", process.env.SUPABASE_PUBLISHABLE_KEY);
   if (!response.ok) throw new AppError("No pudimos verificar la configuración de Supabase Auth.", 503);
   const data = await response.json();
-  return data.disable_signup === true && data.external?.anonymous !== true;
+  return data.disable_signup === true && data.external?.anonymous_users === false;
 }
 
 export async function confirmedSupabaseUser(userId: string, email: string) {

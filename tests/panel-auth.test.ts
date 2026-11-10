@@ -32,9 +32,10 @@ test("Supabase: autentica solo la identidad vinculada y respeta la desactivació
 
 test("Supabase: el acceso automático exige registro cerrado, cuenta nueva y rol de personal", async t => {
   let signupDisabled = false;
+  let anonymous = true;
   let user = identity("nueva@example.test", undefined, "2025-01-01T00:00:00Z");
   const fetchMock = t.mock.method(globalThis, "fetch", async (url: string) =>
-    Response.json(url.endsWith("/settings") ? { disable_signup: signupDisabled } : { user, expires_in: 3600 }),
+    Response.json(url.endsWith("/settings") ? { disable_signup: signupDisabled, external: { anonymous_users: anonymous } } : { user, expires_in: 3600 }),
   );
   assert.equal(await authenticateAdmin(user.email, "contraseña de Supabase"), null);
   assert.equal(fetchMock.mock.callCount(), 0);
@@ -43,6 +44,8 @@ test("Supabase: el acceso automático exige registro cerrado, cuenta nueva y rol
   user = identity(user.email);
   assert.equal(await authenticateAdmin(user.email, "contraseña de Supabase"), null);
   signupDisabled = true;
+  assert.equal(await authenticateAdmin(user.email, "contraseña de Supabase"), null);
+  anonymous = false;
   const login = await authenticateAdmin(user.email, "contraseña de Supabase");
   assert.equal(login?.admin.role, "staff");
   assert.equal(login?.admin.auth_id, user.id);
