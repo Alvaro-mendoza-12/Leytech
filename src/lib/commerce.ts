@@ -10,9 +10,11 @@ import { markChanged } from "./revisions";
 export async function snapshot(
   input: unknown,
   q: Queryable = db,
+  allowSamples = false,
 ): Promise<SnapshotLine[]> {
   const { items } = cartSchema.parse(input);
   const config=await settings(q);
+  const samplesVisible = allowSamples && config.showSamples;
   const consolidated = new Map<string, { quantity: number; price?: number }>();
   for (const item of items) {
     const previous = consolidated.get(item.variantId);
@@ -34,16 +36,21 @@ export async function snapshot(
         is_demo: boolean;
       }
     >(
-      `SELECT v.*,p.name AS product_name,p.slug,p.images,p.type,p.is_demo FROM variants v JOIN products p ON p.id=v.product_id JOIN categories c ON c.id=p.category_id WHERE v.id=$1 AND v.active=true AND p.status='published' AND c.active=true`,
-      [variantId],
+      `SELECT v.*,p.name AS product_name,p.slug,p.images,p.type,p.is_demo
+       FROM variants v JOIN products p ON p.id=v.product_id JOIN categories c ON c.id=p.category_id
+       WHERE v.id=$1 AND v.active=true AND c.active=true
+         AND (p.status='published' OR ($2::boolean AND p.is_demo AND p.status='draft'))`,
+      [variantId, samplesVisible],
     );
     const v = rows[0];
     if (!v)
       throw new AppError(
         "Un producto ya no está disponible. Retíralo del carrito.",
       );
-    if(v.is_demo&&!config.demoMode)throw new AppError('Este producto es un ejemplo y no está disponible para ventas.');
-    if (v.stock - v.reserved < item.quantity)
+    if (v.is_demo && !config.demoMode && !samplesVisible)
+      throw new AppError("Este producto es un ejemplo y no está disponible para ventas.");
+    const available = v.is_demo && allowSamples ? 99 : v.stock - v.reserved;
+    if (available < item.quantity)
       throw new AppError(
         `${v.product_name} (${v.name}): quedan ${v.stock - v.reserved} unidades.`,
         409,
@@ -59,7 +66,7 @@ export async function snapshot(
       quantity: item.quantity,
       image: v.image || v.images[0] || "/images/placeholder.svg",
       type: v.type,
-      available: v.stock - v.reserved,
+      available,
       isDemo: v.is_demo,
       priceChanged: item.price !== undefined && item.price !== v.price,
     });
@@ -71,7 +78,10 @@ export function whatsappMessage(
   items: SnapshotLine[],
   subtotal: number,
 ) {
-  return `Hola Leytech, quiero comprar estos productos por WhatsApp.\n\nSolicitud: ${code}\n\n${items.map((i, n) => `${n + 1}. ${i.name}\nVariante: ${i.variant}\nSKU: ${i.sku}\nCantidad: ${i.quantity}\nPrecio unitario: ${money(i.price)}`).join("\n\n")}\n\nSubtotal de productos: ${money(subtotal)}\n\nQuiero confirmar disponibilidad, costo de envío, total y forma de pago antes de finalizar la compra. ¡Gracias!`;
+  const lines = items.map((item, index) =>
+    `${index + 1}. ${item.name}${item.isDemo ? " (muestra)" : ""}\nVariante: ${item.variant}\nSKU: ${item.sku}\nCantidad: ${item.quantity}\n${item.isDemo ? "Precio referencial" : "Precio unitario"}: ${money(item.price)}`,
+  );
+  return `Hola Leytech, quiero consultar estos productos por WhatsApp.\n\nSolicitud: ${code}\n\n${lines.join("\n\n")}\n\nSubtotal referencial: ${money(subtotal)}\n\n¿Me confirman disponibilidad, precio final y opciones de entrega? ¡Gracias!`;
 }
 export async function createQuote(input: unknown) {
   await expireOrders();
@@ -80,7 +90,7 @@ export async function createQuote(input: unknown) {
     if (config.orderChannel === "whatsapp" && !config.demoMode && !config.salesEnabled) {
       throw new AppError("Leytech pausó las solicitudes de compra. Escríbenos por WhatsApp si tienes preguntas.", 409);
     }
-    const items = await snapshot(input, tx);
+    const items = await snapshot(input, tx, true);
     if (items.some((i) => i.priceChanged))
       throw new AppError(
         "El precio cambió. Actualiza el carrito y revisa el total antes de cotizar.",

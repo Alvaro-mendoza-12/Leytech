@@ -68,6 +68,7 @@ export type StoreSettings = {
   whatsapp: string;
   tagline: string;
   demoMode: boolean;
+  showSamples: boolean;
   salesEnabled: boolean;
   legalName: string;
   ruc: string;

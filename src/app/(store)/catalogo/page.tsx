@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Search, SlidersHorizontal, ChevronRight, X } from "lucide-react";
-import { products, categories, settings } from "@/lib/catalog";
+import { products, categories, settings, catalogVisibility, visibleProduct } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { ProductGrid } from "@/components/store-ui";
 import { CategoryIcon } from "@/components/icons";
@@ -13,6 +13,7 @@ export default async function CatalogPage({
 }) {
   const p = await searchParams;
   const store=await settings();
+  const visibility = catalogVisibility(store);
   const hasFilters=!!(p.q||p.categoria||p.marca||p.color||p.ofertas||p.min||p.max);
   const min =
       p.min && Number.isFinite(Number(p.min))
@@ -36,10 +37,10 @@ export default async function CatalogPage({
     }),
     categories(),
     db.query<{ brand: string }>(
-      "SELECT DISTINCT p.brand FROM products p JOIN categories c ON c.id=p.category_id WHERE p.status='published' AND c.active=true AND ($1::boolean OR p.is_demo=false) ORDER BY p.brand",[store.demoMode],
+      `SELECT DISTINCT p.brand FROM products p JOIN categories c ON c.id=p.category_id WHERE ${visibleProduct("$1")} ORDER BY p.brand`, [visibility],
     ),
     db.query<{ color: string }>(
-      "SELECT DISTINCT v.color FROM variants v JOIN products p ON p.id=v.product_id JOIN categories c ON c.id=p.category_id WHERE p.status='published' AND c.active=true AND ($1::boolean OR p.is_demo=false) AND v.active=true AND v.color<>'' ORDER BY v.color",[store.demoMode],
+      `SELECT DISTINCT v.color FROM variants v JOIN products p ON p.id=v.product_id JOIN categories c ON c.id=p.category_id WHERE ${visibleProduct("$1")} AND v.active=true AND v.color<>'' ORDER BY v.color`, [visibility],
     ),
   ]);
   const active = cats.find((c) => c.slug === p.categoria);
@@ -69,7 +70,7 @@ export default async function CatalogPage({
         </span>
         <div>
           <h1>{title}</h1>
-          <p>Tecnología para trabajar, jugar y todo lo demás.</p>
+          <p>{result.products.some(item => item.is_demo) ? "Los productos de muestra tienen precios referenciales. Consulta su disponibilidad por WhatsApp." : "Tecnología para trabajar, jugar y todo lo demás."}</p>
         </div>
       </div>
       <div className="catalog-layout">

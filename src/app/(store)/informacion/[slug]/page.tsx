@@ -30,15 +30,15 @@ export default async function Page({
   const faqs = [
     [
       "¿Cómo puedo cotizar?",
-      "Agrega tus productos al carrito y selecciona “Comprar por WhatsApp”. Registraremos tu solicitud con un código. Después abre WhatsApp y envía el resumen a Leytech para confirmar la compra.",
+      "Agrega tus productos al carrito y selecciona “Enviar carrito por WhatsApp”. Registraremos un código para identificar tu consulta. Abre WhatsApp y envía el resumen para acordar los detalles con Leytech.",
     ],
     [
       "¿Debo crear una cuenta?",
-      "Puedes comprar como invitado. Solo solicitamos los datos necesarios para atender el pedido.",
+      "Puedes explorar el catálogo y usar el carrito sin crear una cuenta. La atención se realiza por WhatsApp.",
     ],
     [
       "¿Mi carrito reserva los productos?",
-      "No. El stock se comprueba de nuevo al cotizar y al crear un pedido. Los pedidos reservan unidades durante 30 minutos. Una cotización no reserva stock.",
+      "El carrito prepara una consulta. Leytech confirma disponibilidad y condiciones directamente por WhatsApp.",
     ],
     [
       "¿Cómo confirmo las opciones de envío?",
@@ -46,7 +46,7 @@ export default async function Page({
     ],
     [
       "¿Cómo sé si mi pago fue confirmado?",
-      "Leytech verifica el ingreso por el medio acordado en WhatsApp. Si tienes un pedido registrado, su enlace privado mostrará el estado actualizado después de esa verificación.",
+      "Leytech te comunica la confirmación del pago en la misma conversación de WhatsApp.",
     ],
     [
       "¿Qué ocurre con un producto digital?",

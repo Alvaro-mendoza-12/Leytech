@@ -43,7 +43,7 @@ Los scripts prepare-supabase, configure-storage e initialize-production sirven p
 
 El canal es WhatsApp; no hacen falta Mercado Pago ni otra pasarela. El código legado de pagos en línea está fuera del flujo configurado y no tiene credenciales de producción.
 
-Una solicitud no reserva stock. El propietario registra un pedido después del acuerdo y confirma el pago con evidencia. La reserva vence a los 30 minutos y se libera al consultar el panel/pedido o iniciar solicitudes. El comando stock:expire permite liberarla desde mantenimiento. No se contrató un cron de pago.
+El catálogo y el carrito se usan sin cuenta. La solicitud se guarda con un código para identificarla en WhatsApp. El panel gestiona estados de atención. La compra, el pago y la entrega se acuerdan en WhatsApp.
 
 El Libro guarda solicitudes e imprime constancias. No envía correos automáticamente. El propietario completará titular/RUC y demás datos desde el panel y debe revisar los requisitos aplicables. Las políticas iniciales son editables; no equivalen a una validación legal independiente.
 
@@ -53,6 +53,6 @@ El acceso inicial está en `.data/production-admin-access.txt`. El cambio de con
 
 Verifica respaldos y retención del plan contratado en Supabase. La copia SQL no incluye los objetos de Storage; respalda ambos por sus canales adecuados. Prueba la restauración en una base separada. No se declara una restauración ya validada.
 
-El panel carga hasta 1000 productos, 200 pedidos/solicitudes y 100 eventos recientes. Sus indicadores no sustituyen la contabilidad ni la facturación electrónica. Para mayor volumen añade paginación, agregaciones y monitoreo.
+El panel carga hasta 1000 productos, 200 solicitudes y 100 eventos recientes. Sus indicadores no sustituyen la contabilidad ni la facturación electrónica. Para mayor volumen añade paginación, agregaciones y monitoreo.
 
 Referencias: [PostgreSQL de Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres), [Storage privado](https://supabase.com/docs/guides/storage/serving/downloads), [Node.js en Vercel](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions).

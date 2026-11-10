@@ -4,12 +4,12 @@
 
 Leytech está publicada en https://leytech-ochre.vercel.app con administración en /admin, PostgreSQL administrado y almacenamiento privado de Supabase. El modo demostración está desactivado y las ventas se coordinan por WhatsApp al +51 905 886 853.
 
-El propietario cargará el catálogo real y completará los datos comerciales desde el panel. Los 12 ejemplos iniciales están como borradores editables. No se publicaron precios o existencias ficticias ni se generaron cobros o pedidos de venta de prueba en la base de producción.
+Los 12 ejemplos se muestran en el catálogo con etiqueta de muestra, precio referencial y disponibilidad por consultar. El propietario carga el catálogo real y completa los datos comerciales desde el panel.
 
 ## Verificaciones
 
 - TypeScript y compilación correctos. Vercel informa el despliegue como Ready.
-- 26 pruebas de negocio y seguridad correctas: sesiones, origen, catálogo, variantes, precios, inventario, concurrencia, pedidos, reservas, expiración e idempotencia. Incluyen venta acordada por WhatsApp con correo opcional y rechazo de ejemplos en modo real.
+- 27 pruebas de negocio y seguridad correctas: sesiones, origen, catálogo, variantes, precios, inventario, concurrencia, pedidos, reservas, expiración e idempotencia. Incluyen la cotización de muestras sin reservar inventario y el bloqueo de borradores reales en el catálogo público.
 - Conexión real con cuenta técnica y certificado TLS verificado. Las 16 tablas tienen RLS; la clave pública no permite leer administradores, sesiones, pedidos o configuración.
 - Inicio y acceso del propietario comprobados desde el navegador en producción.
 - Subida y recuperación de una fotografía en Supabase verificadas byte por byte; conservada en un borrador editable.
@@ -19,7 +19,7 @@ La instalación local previa tuvo 19 comprobaciones HTTP y 12 combinaciones de p
 
 ## Uso diario
 
-Publica los productos reales desde Catálogo. Atiende el código del cliente en Ventas → Solicitudes de WhatsApp. Después del acuerdo registra el pedido con sus datos y costo de entrega. Confirma el pago solo después de verificar el ingreso y actualiza preparación, envío y entrega.
+Publica los productos reales desde Catálogo. Busca el código en Solicitudes → Solicitudes de WhatsApp. Atiende y confirma la compra en WhatsApp, y registra en el panel el estado de la consulta.
 
 ## Límites concretos
 

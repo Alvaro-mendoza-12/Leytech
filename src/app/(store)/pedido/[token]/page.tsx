@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Clock, MessageCircle, Check } from "lucide-react";
 import { db } from "@/lib/db";
 import { expireOrders } from "@/lib/commerce";
@@ -17,13 +17,14 @@ export default async function Page({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const s = await settings();
+  if (s.orderChannel === "whatsapp") redirect("/carrito");
   if (!/^[a-f0-9]{64}$/.test(token)) notFound();
   await expireOrders();
   const o = (
     await db.query<Order>("SELECT * FROM orders WHERE public_token=$1", [token])
   ).rows[0];
   if (!o) notFound();
-  const s = await settings();
   const code = orderCode(o.code);
   return (
     <div className="container page-container">

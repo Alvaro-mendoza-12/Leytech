@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
-import { Copy, Eye, MessageCircle, Search } from "lucide-react";
-import { money, date, orderCode, quoteCode, statusLabel } from "@/lib/format";
-import type { Order } from "@/lib/types";
+import { Eye } from "lucide-react";
+import { money, date, quoteCode, statusLabel } from "@/lib/format";
 import { adminApi, type AdminData, type Quote, type Claim } from "./api";
 import { Modal } from "./modal";
+export const quoteStatusLabels: Record<string, string> = { pending: "Por atender", contacted: "Atendida", closed: "Cerrada" };
+
 export function SalesManager({
   data,
   tab,
@@ -16,83 +17,11 @@ export function SalesManager({
   refresh: () => Promise<void>;
   notify: (s: string) => void;
 }) {
-  const [search, setSearch] = useState(""),
-    [converting,setConverting]=useState(false),
-    [status, setStatus] = useState(""),
-    [selected, setSelected] = useState<Order | null>(null),
-    [quote, setQuote] = useState<Quote | null>(null),
-    [claim, setClaim] = useState<Claim | null>(null),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
-  async function action(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!selected) return;
-    setBusy(true);
-    setError("");
-    const f = new FormData(e.currentTarget);
-    try {
-      await adminApi("orders", {
-        id: selected.id,
-        action: f.get("action"),
-        reason: f.get("reason") || "",
-      });
-      await refresh();
-      setSelected(null);
-      notify("Pedido actualizado");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  const orders = data.orders.filter(
-    (o) =>
-      (!status || o.status === status) &&
-      `${orderCode(o.code)} ${o.customer.name} ${o.customer.email}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-  );
+  const [search, setSearch] = useState("");
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [claim, setClaim] = useState<Claim | null>(null);
   return (
     <>
-      {tab === "pedidos" && (
-        <>
-          <div className="toolbar">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar pedido, nombre o correo…"
-              aria-label="Buscar pedidos"
-            />
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              aria-label="Filtrar estado de pedido"
-            >
-              <option value="">Todos los estados</option>
-              {[
-                "pending",
-                "paid",
-                "cancelled",
-                "expired",
-                "review",
-                "refunded",
-              ].map((s) => (
-                <option key={s} value={s}>
-                  {statusLabel[s]}
-                </option>
-              ))}
-            </select>
-            <span>{orders.length} pedidos · últimos 200</span>
-          </div>
-          <OrdersTable
-            orders={orders}
-            onSelect={(o) => {
-              setSelected(o);
-              setError("");
-            }}
-          />
-        </>
-      )}
       {tab === "cotizaciones" && (
         <>
           <div className="toolbar">
@@ -155,7 +84,7 @@ export function SalesManager({
                           >
                             {["pending", "contacted", "closed"].map((s) => (
                               <option key={s} value={s}>
-                                {statusLabel[s]}
+                                {quoteStatusLabels[s]}
                               </option>
                             ))}
                           </select>
@@ -163,7 +92,7 @@ export function SalesManager({
                         <td>
                           <button
                             className="icon-button"
-                            onClick={() => {setQuote(q);setError('');}}
+                            onClick={() => setQuote(q)}
                             aria-label={`Ver ${quoteCode(q.code)}`}
                           >
                             <Eye size={15} />
@@ -177,129 +106,6 @@ export function SalesManager({
             {!data.quotes.length && (
               <div className="admin-empty">
                 Las solicitudes del catálogo y del carrito aparecerán aquí.
-              </div>
-            )}
-          </div>
-        </>
-      )}
-      {tab === "pagos" && (
-        <div className="admin-panel">
-          <div className="admin-panel-heading">
-            <h2>Pagos verificados con el proveedor</h2>
-          </div>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID Mercado Pago</th>
-                  <th>Pedido</th>
-                  <th>Importe</th>
-                  <th>Estado del proveedor</th>
-                  <th>Actualizado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.payments.map((p) => (
-                  <tr key={p.provider_id}>
-                    <td>{p.provider_id}</td>
-                    <td>
-                      {orderCode(
-                        data.orders.find((o) => o.id === p.order_id)?.code ||
-                          "—",
-                      )}
-                    </td>
-                    <td>{money(p.amount)}</td>
-                    <td>
-                      <span className="badge">{p.status}</span>
-                    </td>
-                    <td>{date(p.updated_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!data.payments.length && (
-            <div className="admin-empty">
-              No hay pagos verificados. Las reservas y los pedidos pendientes no
-              cuentan como ventas.
-            </div>
-          )}
-        </div>
-      )}
-      {tab === "clientes" && (
-        <>
-          <div className="toolbar">
-            <input
-              aria-label="Buscar clientes"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar nombre, correo o celular…"
-            />
-            <span>Datos de los pedidos registrados</span>
-          </div>
-          <div className="admin-panel">
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Contacto</th>
-                    <th>Pedidos</th>
-                    <th>Compras confirmadas</th>
-                    <th>Último pedido</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...new Set(data.orders.map((o) => o.customer.email || o.customer.phone))]
-                    .map((contact) =>
-                      data.orders.filter((o) => (o.customer.email || o.customer.phone) === contact),
-                    )
-                    .filter((list) =>
-                      `${list[0].customer.name} ${emailText(list)} ${list[0].customer.phone}`
-                        .toLowerCase()
-                        .includes(search.toLowerCase()),
-                    )
-                    .map((list) => (
-                      <tr key={list[0].customer.email || list[0].customer.phone}>
-                        <td>
-                          <strong>{list[0].customer.name}</strong>
-                          <small>
-                            {list.every((o) => o.is_demo)
-                              ? "Datos de demostración"
-                              : ""}
-                          </small>
-                        </td>
-                        <td>
-                          {list[0].customer.email}
-                          <small>{list[0].customer.phone}</small>
-                        </td>
-                        <td>{list.length}</td>
-                        <td>
-                          {money(
-                            list
-                              .filter((o) => o.status === "paid" && !o.is_demo)
-                              .reduce((s, o) => s + o.total, 0),
-                          )}
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-outline"
-                            onClick={() => {
-                              setSelected(list[0]);
-                              setError("");
-                            }}
-                          >
-                            {orderCode(list[0].code)}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-            {!data.orders.length && (
-              <div className="admin-empty">
-                Los clientes se registrarán cuando recibas pedidos.
               </div>
             )}
           </div>
@@ -356,127 +162,6 @@ export function SalesManager({
           )}
         </div>
       )}
-      {selected && (
-        <Modal
-          title={`Pedido ${orderCode(selected.code)}`}
-          onClose={() => setSelected(null)}
-        >
-          <span className={`badge ${selected.status}`}>
-            {statusLabel[selected.status]}
-          </span>
-          {selected.is_demo && (
-            <div className="info-box">
-              Pedido de prueba. No representa una venta ni un cobro real.
-            </div>
-          )}
-          <h3 style={{ marginTop: 20 }}>{selected.customer.name}</h3>
-          <p style={{ fontSize: 12, color: "var(--muted)" }}>
-            {selected.customer.email} · {selected.customer.phone}
-            <br />
-            {selected.customer.address} {selected.customer.district}
-          </p>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Producto / variante</th>
-                  <th>Cantidad</th>
-                  <th>Precio unitario</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selected.items.map((i) => (
-                  <tr key={i.variantId}>
-                    <td>
-                      <strong>{i.name}</strong>
-                      <small>
-                        {i.variant} · {i.sku}
-                      </small>
-                    </td>
-                    <td>{i.quantity}</td>
-                    <td>{money(i.price)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="summary-row summary-total">
-            <span>Total con entrega</span>
-            <strong>{money(selected.total)}</strong>
-          </div>
-          <p className="summary-note">
-            Creado: {date(selected.created_at)} · Reserva:{" "}
-            {date(selected.expires_at)} · Medio: {selected.method} · Entrega:{" "}
-            {statusLabel[selected.fulfillment]}
-          </p>
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={async () => {
-              const link = new URL(`/pedido/${selected.public_token}`, window.location.origin);
-              try {
-                await navigator.clipboard.writeText(link.href);
-                notify("Enlace del pedido copiado para compartir con el cliente");
-              } catch {
-                window.open(link.href, "_blank", "noopener,noreferrer");
-              }
-            }}
-          >
-            <Copy size={15} /> Copiar enlace para el cliente
-          </button>
-          {["pending", "paid"].includes(selected.status) && (
-            <form onSubmit={action} style={{ marginTop: 22 }}>
-              <div className="form-grid">
-                <label className="wide">
-                  Actualizar pedido
-                  <select name="action">
-                    {selected.status === "pending" ? (
-                      <>
-                        {selected.method !== "mercadopago" && (
-                          <option value="paid">
-                            {selected.is_demo
-                              ? "Confirmar pago de prueba"
-                              : "Confirmar ingreso de pago manual"}
-                          </option>
-                        )}
-                        <option value="cancelled">
-                          Cancelar y liberar reserva
-                        </option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="preparing">En preparación</option>
-                        <option value="shipped">Enviado</option>
-                        <option value="delivered">Entregado</option>
-                      </>
-                    )}
-                  </select>
-                </label>
-                <label className="wide">
-                  Motivo o evidencia de verificación
-                  <textarea
-                    name="reason"
-                    maxLength={1000}
-                    placeholder="Para confirmar un pago: indica la referencia y cómo verificaste el ingreso."
-                  />
-                </label>
-              </div>
-              {error && (
-                <p className="error-box" role="alert">
-                  {error}
-                </p>
-              )}
-              <button
-                className="btn btn-primary"
-                style={{ marginTop: 17 }}
-                disabled={busy}
-              >
-                Guardar cambio
-              </button>
-            </form>
-          )}
-        </Modal>
-      )}
       {quote && (
         <Modal
           title={`Cotización ${quoteCode(quote.code)}`}
@@ -484,7 +169,7 @@ export function SalesManager({
         >
           <div className="info-box">
             Abrir WhatsApp no confirma que el cliente envió el mensaje. Estado:{" "}
-            {statusLabel[quote.status]}.
+            {quoteStatusLabels[quote.status]}.
           </div>
           {quote.items.map((i) => (
             <div key={i.variantId} className="summary-row">
@@ -492,7 +177,7 @@ export function SalesManager({
                 <strong>{i.name}</strong>
                 <br />
                 <small>
-                  {i.variant} · {i.sku} · {i.quantity} unidades
+                  {i.variant} · {i.sku} · {i.quantity} unidades{i.isDemo ? " · Muestra" : ""}
                 </small>
               </div>
               <strong>{money(i.price * i.quantity)}</strong>
@@ -505,7 +190,7 @@ export function SalesManager({
           <p className="summary-note">
             {date(quote.created_at)} · Inventario sin reservar
           </p>
-          {data.orders.some(o=>(o as Order&{quote_id?:string}).quote_id===quote.id)?<div className="success-box">Esta solicitud ya tiene un pedido registrado. Puedes gestionarlo en Ventas → Pedidos.</div>:<form style={{marginTop:22}} onSubmit={async e=>{e.preventDefault();setConverting(true);setError('');const values=new FormData(e.currentTarget);try{const result=await adminApi('quotes/order',{quoteId:quote.id,name:values.get('name'),phone:values.get('phone'),email:values.get('email')||'',delivery:values.get('delivery'),address:values.get('address')||'',district:values.get('district')||'',shippingFee:Math.round(Number(values.get('shippingFee')||0)*100),agreement:values.get('agreement')});await refresh();setQuote(null);notify(`Pedido ${orderCode(result.code)} creado`);}catch(e){setError((e as Error).message);}finally{setConverting(false);}}}><h3>Registrar la venta acordada</h3><p className="summary-note">Completa esto después de que el cliente confirme la compra por WhatsApp. Se reserva el stock durante 30 minutos.</p><div className="form-grid"><label>Nombre del cliente<input name="name" minLength={3} maxLength={100} required/></label><label>Celular / WhatsApp<input name="phone" type="tel" required minLength={9}/></label><label>Correo (opcional)<input name="email" type="email"/></label><label>Entrega<select name="delivery" defaultValue={quote.items.every(i=>i.type==='digital')?'digital':'pickup'}><option value="pickup">Recojo coordinado</option><option value="shipping">Envío coordinado</option><option value="digital">Entrega digital</option></select></label><label>Dirección acordada<input name="address" maxLength={250}/></label><label>Distrito / ciudad<input name="district" maxLength={100}/></label><label>Costo de envío acordado (S/)<input name="shippingFee" type="number" min="0" step="0.01" defaultValue="0"/></label><label className="wide">Constancia del acuerdo<textarea name="agreement" minLength={10} maxLength={1000} required placeholder="Ej. Cliente confirmó productos, total y entrega por WhatsApp."/></label></div>{error&&<div className="error-box" role="alert">{error}</div>}<button className="btn btn-primary" style={{marginTop:18}} disabled={converting}>{converting?'Registrando…':'Crear pedido acordado'}</button></form>}
+          <p className="info-box">Usa el código para identificar la consulta en WhatsApp. La compra y el pago se confirman en el chat.</p>
         </Modal>
       )}
       {claim && (
@@ -549,70 +234,5 @@ export function SalesManager({
         </Modal>
       )}
     </>
-  );
-}
-function emailText(orders: Order[]) {
-  return orders[0].customer.email;
-}
-export function OrdersTable({
-  orders,
-  onSelect,
-}: {
-  orders: Order[];
-  onSelect: (o: Order) => void;
-}) {
-  return (
-    <div className="admin-panel">
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Pedido</th>
-              <th>Cliente</th>
-              <th>Total</th>
-              <th>Estado</th>
-              <th>Fecha</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o.id}>
-                <td>
-                  <strong>{orderCode(o.code)}</strong>
-                  {o.is_demo && <small>Demostración</small>}
-                </td>
-                <td>
-                  {o.customer.name}
-                  <small>{o.customer.email}</small>
-                </td>
-                <td>{money(o.total)}</td>
-                <td>
-                  <span className={`badge ${o.status}`}>
-                    {statusLabel[o.status]}
-                  </span>
-                </td>
-                <td>{date(o.created_at)}</td>
-                <td>
-                  <button
-                    className="icon-button"
-                    onClick={() => onSelect(o)}
-                    aria-label={`Ver ${orderCode(o.code)}`}
-                  >
-                    <Eye size={15} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {!orders.length && (
-        <div className="admin-empty">
-          Aún no hay pedidos. Los recibirás aquí cuando un cliente confirme su
-          carrito.
-        </div>
-      )}
-    </div>
   );
 }

@@ -335,14 +335,13 @@ export function SettingsManager({
                   <label className="choice-label">
                     <input
                       type="checkbox"
-                      checked={s.demoMode}
-                      onChange={(e) => update("demoMode", e.target.checked)}
+                      checked={s.showSamples}
+                      onChange={(e) => update("showSamples", e.target.checked)}
                     />
                     <span>
-                      <strong>Modo de demostración</strong>
+                      <strong>Mostrar productos de muestra</strong>
                       <small>
-                        Catálogo de ejemplo, pedidos de prueba y pagos reales
-                        deshabilitados.
+                        Las muestras aparecen en el catálogo con precios referenciales y disponibilidad por consultar.
                       </small>
                     </span>
                   </label>
@@ -363,122 +362,16 @@ export function SettingsManager({
               </section>
             </>
           )}
-          {tab==='whatsapp'&&<section className="form-panel"><h2>Tu tienda vende por WhatsApp</h2><p>El cliente prepara su carrito, genera una solicitud y te envía el resumen por WhatsApp. No se cobran tarjetas ni se utiliza una pasarela de pago en la web.</p><label>WhatsApp del negocio (internacional, sin +)<input value={s.whatsapp} pattern="[1-9][0-9]{7,14}" required onChange={e=>update('whatsapp',e.target.value)}/></label><div className="info-box">Cuando acuerdes una venta, abre Ventas → Solicitudes de WhatsApp y crea el pedido con los datos y el envío aceptados por el cliente. Después registra el pago verificado y la entrega.</div></section>}
-          {tab === "pagos" && (
-            <>
-              <section className="form-panel">
-                <h2>Transferencia bancaria</h2>
-                <p>
-                  Habilítala solo cuando puedas verificar los ingresos del
-                  negocio.
-                </p>
-                <label className="consent-label">
-                  <input
-                    type="checkbox"
-                    checked={s.transferEnabled}
-                    onChange={(e) =>
-                      update("transferEnabled", e.target.checked)
-                    }
-                  />{" "}
-                  Habilitar transferencia bancaria
-                </label>
-                <label style={{ marginTop: 20 }}>
-                  Instrucciones y cuenta del negocio
-                  <textarea
-                    rows={5}
-                    value={s.transferInstructions}
-                    onChange={(e) =>
-                      update("transferInstructions", e.target.value)
-                    }
-                    placeholder="Banco, titular, cuenta y pasos para confirmar el pago"
-                  />
-                </label>
-              </section>
-              <section className="form-panel">
-                <h2>Mercado Pago Checkout Pro</h2>
-                <p>
-                  Las credenciales se configuran de forma privada en el
-                  servidor. No se guardan desde el navegador.
-                </p>
-                <div className="info-box">
-                  Configura MERCADOPAGO_ACCESS_TOKEN, MERCADOPAGO_WEBHOOK_SECRET
-                  y MERCADOPAGO_COLLECTOR_ID. Usa primero
-                  MERCADOPAGO_MODE=sandbox y completa una compra con cuentas
-                  oficiales de prueba antes de habilitar producción.
-                </div>
-                <p>
-                  No se solicitan números de tarjeta en esta tienda. Yape y Plin
-                  solo se mostrarán cuando el proveedor contratado los ofrezca y
-                  estén verificados.
-                </p>
-              </section>
-            </>
-          )}
-          {tab === "entregas" && (
-            <>
-              <section className="form-panel">
-                <h2>Envíos</h2>
-                <p>
-                  El costo se incluye en el total antes de confirmar. Solo se
-                  aceptan pedidos en la zona configurada.
-                </p>
-                <label className="consent-label">
-                  <input
-                    type="checkbox"
-                    checked={s.shippingEnabled}
-                    onChange={(e) =>
-                      update("shippingEnabled", e.target.checked)
-                    }
-                  />
-                  Habilitar envíos
-                </label>
-                <div className="form-grid" style={{ marginTop: 20 }}>
-                  <label>
-                    Zona de cobertura
-                    <input
-                      value={s.shippingZone}
-                      onChange={(e) => update("shippingZone", e.target.value)}
-                      placeholder="Ej. Miraflores, Lima"
-                    />
-                  </label>
-                  <label>
-                    Tarifa final (S/)
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={s.shippingFee / 100}
-                      onChange={(e) =>
-                        update(
-                          "shippingFee",
-                          Math.round(Number(e.target.value) * 100),
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-              </section>
-              <section className="form-panel">
-                <h2>Recojo</h2>
-                <label className="consent-label">
-                  <input
-                    type="checkbox"
-                    checked={s.pickupEnabled}
-                    onChange={(e) => update("pickupEnabled", e.target.checked)}
-                  />{" "}
-                  Habilitar recojo sin costo
-                </label>
-                <label style={{ marginTop: 20 }}>
-                  Dirección, horario e instrucciones
-                  <textarea
-                    value={s.pickupInstructions}
-                    onChange={(e) =>
-                      update("pickupInstructions", e.target.value)
-                    }
-                  />
-                </label>
-              </section>
-            </>
+          {tab === "whatsapp" && (
+            <section className="form-panel">
+              <h2>Atención por WhatsApp</h2>
+              <p>El visitante prepara su carrito y te envía el resumen con un código. Acuerda la compra, el pago y el envío en la conversación.</p>
+              <label>
+                WhatsApp del negocio (internacional, sin +)
+                <input value={s.whatsapp} pattern="[1-9][0-9]{7,14}" required onChange={e => update("whatsapp", e.target.value)} />
+              </label>
+              <div className="info-box">Busca el código en Solicitudes → Solicitudes de WhatsApp y marca la consulta como atendida cuando respondas.</div>
+            </section>
           )}
           {tab === "politicas" && (
             <section className="form-panel">

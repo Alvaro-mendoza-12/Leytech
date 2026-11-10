@@ -6,22 +6,20 @@ import {
   LayoutDashboard,
   Package,
   ShoppingBag,
-  Users,
   Megaphone,
   Settings,
   ExternalLink,
   LogOut,
   ArrowRight,
-  Wallet,
   MessageCircle,
   TriangleAlert,
   Activity,
   RefreshCw,
 } from "lucide-react";
-import { money, orderCode, date, statusLabel } from "@/lib/format";
+import { quoteCode, date } from "@/lib/format";
 import { useCart } from "@/components/cart-provider";
 import { CatalogManager } from "./catalog-manager";
-import { SalesManager } from "./sales-manager";
+import { SalesManager, quoteStatusLabels } from "./sales-manager";
 import { SettingsManager } from "./settings-manager";
 import type { AdminData } from "./api";
 import { BrandLogo } from "../brand-logo";
@@ -36,11 +34,10 @@ const menu = [
   },
   {
     id: "ventas",
-    label: "Ventas",
+    label: "Solicitudes",
     icon: ShoppingBag,
-    tabs: ["pedidos", "cotizaciones", "reclamaciones"],
+    tabs: ["cotizaciones", "reclamaciones"],
   },
-  { id: "clientes", label: "Clientes", icon: Users, tabs: [] },
   { id: "marketing", label: "Marketing", icon: Megaphone, tabs: ["inicio"] },
   {
     id: "configuracion",
@@ -49,7 +46,6 @@ const menu = [
     tabs: [
       "negocio",
       "whatsapp",
-      "entregas",
       "politicas",
       "usuarios",
       "seguridad",
@@ -61,14 +57,11 @@ const labels: Record<string, string> = {
   categorias: "Categorías",
   inventario: "Inventario",
   marcas: "Marcas",
-  pedidos: "Pedidos",
   cotizaciones: "Solicitudes de WhatsApp",
-  whatsapp:'Ventas por WhatsApp',
-  pagos: "Pagos",
+  whatsapp: "Atención por WhatsApp",
   reclamaciones: "Reclamaciones",
   inicio: "Página de inicio",
   negocio: "Negocio",
-  entregas: "Entregas",
   politicas: "Políticas",
   usuarios: "Usuarios",
   seguridad: "Seguridad",
@@ -76,8 +69,7 @@ const labels: Record<string, string> = {
 const subtitles: Record<string, string> = {
   resumen: "Todo lo que pasa en tu negocio, en un lugar.",
   catalogo: "Tus productos y su disponibilidad, siempre al día.",
-  ventas: "Del primer contacto a la entrega.",
-  clientes: "Conoce a quienes eligen Leytech.",
+  ventas: "Organiza las consultas que los visitantes preparan para WhatsApp.",
   marketing: "Dale a tu tienda una voz propia.",
   configuracion: "Los detalles que hacen funcionar tu negocio.",
 };
@@ -120,7 +112,7 @@ export function Dashboard() {
   const title = menu.find((m) => m.id === section)?.label || "Resumen";
   const low =
     data?.products
-      .filter((p) => p.status === "published")
+      .filter((p) => p.status === "published" && !p.is_demo)
       .flatMap((p) =>
         p.variants
           .filter((v) => v.active && v.stock - v.reserved <= 3)
@@ -256,21 +248,17 @@ export function Dashboard() {
                     <div className="stats-grid">
                       {[
                         {
-                          title: "Ventas confirmadas",
-                          value: money(
-                            data.orders
-                              .filter((o) => o.status === "paid" && !o.is_demo)
-                              .reduce((s, o) => s + o.total, 0),
-                          ),
-                          note: "Pedidos reales del historial cargado",
-                          icon: Wallet,
+                          title: "Productos publicados",
+                          value: data.products.filter(p => p.status === "published" && !p.is_demo).length,
+                          note: "Productos reales del catálogo",
+                          icon: Package,
                         },
                         {
-                          title: "Pedidos pendientes",
-                          value: data.orders.filter(
-                            (o) => o.status === "pending",
+                          title: "Solicitudes atendidas",
+                          value: data.quotes.filter(
+                            (q) => q.status !== "pending",
                           ).length,
-                          note: "Con reserva de stock vigente",
+                          note: "Marcadas como atendidas o cerradas",
                           icon: ShoppingBag,
                         },
                         {
@@ -298,29 +286,21 @@ export function Dashboard() {
                         </div>
                       ))}
                     </div>
-                    {data.settings.demoMode && (
-                      <div className="info-box">
-                        Estás preparando tu tienda. El catálogo inicial es de
-                        ejemplo y los pagos reales están deshabilitados.
-                        Completa la información comercial en Configuración antes
-                        del lanzamiento.
-                      </div>
-                    )}
                     {!data.settings.demoMode && (!data.settings.legalName || !data.settings.ruc || !data.settings.address || !data.settings.email) && (
                       <div className="info-box">
                         Completa el titular, RUC, dirección y correo de atención en Configuración → Negocio.
-                        El catálogo real se publica desde Catálogo → Productos. Los ejemplos son borradores editables.
+                        Puedes mostrar u ocultar las muestras desde Configuración → Negocio.
                       </div>
                     )}
                     <div className="admin-columns">
                       <div>
                         <div className="admin-panel">
                           <div className="admin-panel-heading">
-                            <h2>Pedidos recientes</h2>
+                            <h2>Solicitudes recientes</h2>
                             <button
                               className="text-link"
                               style={{ border: 0, background: "none" }}
-                              onClick={() => navigate("ventas", "pedidos")}
+                              onClick={() => navigate("ventas", "cotizaciones")}
                             >
                               Ver todos <ArrowRight size={14} />
                             </button>
@@ -329,24 +309,23 @@ export function Dashboard() {
                             <table>
                               <thead>
                                 <tr>
-                                  <th>Pedido</th>
-                                  <th>Cliente</th>
-                                  <th>Total</th>
+                                  <th>Solicitud</th>
+                                  <th>Productos</th>
+                                  <th>Fecha</th>
                                   <th>Estado</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {data.orders.slice(0, 5).map((o) => (
-                                  <tr key={o.id}>
+                                {data.quotes.slice(0, 5).map((quote) => (
+                                  <tr key={quote.id}>
                                     <td>
-                                      <strong>{orderCode(o.code)}</strong>
-                                      {o.is_demo && <small>Prueba</small>}
+                                      <strong>{quoteCode(quote.code)}</strong>
                                     </td>
-                                    <td>{o.customer.name}</td>
-                                    <td>{money(o.total)}</td>
+                                    <td>{quote.items.length}</td>
+                                    <td>{date(quote.created_at)}</td>
                                     <td>
-                                      <span className={`badge ${o.status}`}>
-                                        {statusLabel[o.status]}
+                                      <span className={`badge ${quote.status}`}>
+                                        {quoteStatusLabels[quote.status]}
                                       </span>
                                     </td>
                                   </tr>
@@ -354,9 +333,9 @@ export function Dashboard() {
                               </tbody>
                             </table>
                           </div>
-                          {!data.orders.length && (
+                          {!data.quotes.length && (
                             <div className="admin-empty">
-                              Tus primeros pedidos aparecerán aquí.
+                              Las consultas que se preparen desde el catálogo aparecerán aquí.
                             </div>
                           )}
                         </div>
@@ -383,8 +362,6 @@ export function Dashboard() {
                                         "quote.status":
                                           "Cotización actualizada",
                                         "image.uploaded": "Imagen subida",
-                                        "order.paid": "Pago confirmado",
-                                        "order.cancelled": "Pedido cancelado",
                                         "auth.password_changed":
                                           "Contraseña actualizada",
                                       } as Record<string, string>
@@ -399,10 +376,6 @@ export function Dashboard() {
                                           "brand.renamed": "Marca actualizada",
                                           "claim.status":
                                             "Solicitud actualizada",
-                                          "order.preparing":
-                                            "Pedido en preparación",
-                                          "order.shipped": "Pedido enviado",
-                                          "order.delivered": "Pedido entregado",
                                         } as Record<string, string>
                                       )[a.action] ||
                                       "Acción administrativa"}
@@ -483,11 +456,11 @@ export function Dashboard() {
                     notify={setNotice}
                   />
                 )}
-                {(section === "ventas" || section === "clientes") && (
+                {section === "ventas" && (
                   <SalesManager
                     key={section + tab}
                     data={data}
-                    tab={section === "clientes" ? "clientes" : tab}
+                    tab={tab}
                     refresh={refresh}
                     notify={setNotice}
                   />

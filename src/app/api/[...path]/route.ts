@@ -35,6 +35,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const ok = (data: unknown, status = 200) =>
   NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
+async function requireOnlineOrders() {
+  if ((await settings()).orderChannel !== "online")
+    throw new AppError("Las compras y los pagos se coordinan directamente por WhatsApp.", 410);
+}
 async function route(
   request: Request,
   context: { params: Promise<{ path: string[] }> },
@@ -44,6 +48,7 @@ async function route(
     const resource = segments.join("/");
     const method = request.method;
     if (resource === "payments/webhook" && method === "POST") {
+      await requireOnlineOrders();
       await handleWebhook(request);
       return ok({ received: true });
     }
@@ -62,7 +67,7 @@ async function route(
     }
     if (resource === "cart/validate" && method === "POST") {
       await rateLimit(request, "cart", 100);
-      const items = await snapshot(await jsonBody(request));
+      const items = await snapshot(await jsonBody(request), db, true);
       return ok({
         items,
         subtotal: items.reduce((s, i) => s + i.price * i.quantity, 0),
@@ -73,6 +78,7 @@ async function route(
       return ok(await createQuote(await jsonBody(request)), 201);
     }
     if (resource === "orders" && method === "POST") {
+      await requireOnlineOrders();
       await rateLimit(request, "order", 15);
       const order = await createOrder(await jsonBody(request));
       let paymentUrl: string | null = null;
@@ -95,6 +101,7 @@ async function route(
       );
     }
     if (resource === "orders/payment" && method === "POST") {
+      await requireOnlineOrders();
       await rateLimit(request, "payment-retry", 10);
       const d = z
         .object({ token: z.string().regex(/^[a-f0-9]{64}$/) })
@@ -199,11 +206,13 @@ async function route(
       if (new URL(request.url).searchParams.get("revision") === revision) {
         return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
       }
+      const config = await settings();
+      const online = config.orderChannel === "online";
       const result = await Promise.all([
         products({ all: true }),
         categories(true),
-        settings(),
-        db.query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 200"),
+        config,
+        online ? db.query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 200") : { rows: [] },
         db.query("SELECT * FROM quotes ORDER BY created_at DESC LIMIT 200"),
         db.query(
           "SELECT m.*,v.sku FROM stock_movements m JOIN variants v ON v.id=m.variant_id ORDER BY m.created_at DESC LIMIT 100",
@@ -213,7 +222,7 @@ async function route(
         ),
         db.query("SELECT * FROM claims ORDER BY created_at DESC LIMIT 100"),
         db.query("SELECT id,email,role,active FROM admins ORDER BY email"),
-        db.query("SELECT * FROM payments ORDER BY updated_at DESC LIMIT 100"),
+        online ? db.query("SELECT * FROM payments ORDER BY updated_at DESC LIMIT 100") : { rows: [] },
       ]);
       return ok({
         revision,
@@ -232,7 +241,11 @@ async function route(
     }
     if (resource === "admin/products" && method === "POST")
       return ok(await saveProduct(await jsonBody(request), admin));
-    if(resource==='admin/quotes/order'&&method==='POST'){const order=await createOrderFromQuote(await jsonBody(request),admin);return ok({id:order.id,code:order.code,token:order.public_token},201);}
+    if (resource === "admin/quotes/order" && method === "POST") {
+      await requireOnlineOrders();
+      const order = await createOrderFromQuote(await jsonBody(request), admin);
+      return ok({ id: order.id, code: order.code, token: order.public_token }, 201);
+    }
     if (resource === "admin/brands" && method === "POST") {
       const d = z
         .object({
@@ -304,6 +317,7 @@ async function route(
       return ok({ success: true });
     }
     if (resource === "admin/orders" && method === "POST") {
+      await requireOnlineOrders();
       const d = z
         .object({
           id: z.string().max(100),
@@ -433,7 +447,9 @@ async function route(
     if (admin.role !== "owner")
       throw new AppError("Esta operación requiere el rol de propietario.", 403);
     if (resource === "admin/settings" && method === "POST") {
-      const config = settingsSchema.parse(await jsonBody(request));
+      // Store settings do not change the server's sales channel.
+      const body = await jsonBody(request);
+      const config = settingsSchema.parse({ ...(body as object), orderChannel: (await settings()).orderChannel });
       await db.transaction(async (tx) => {
         await tx.query("UPDATE settings SET value=$1 WHERE id='store'", [
           JSON.stringify(config),

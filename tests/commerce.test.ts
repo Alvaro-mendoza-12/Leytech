@@ -546,3 +546,28 @@ test('un borrador de ejemplo requiere revisar los datos antes de publicarlo como
  await saveProduct({...example,status:'published',confirmRealProduct:true},owner);
  assert.equal((await productBySlug(example.slug,true))?.is_demo,false);
 });
+
+test("las muestras visibles pueden cotizarse sin publicar borradores reales ni reservar stock", async () => {
+  const original = await settings();
+  await db.query("UPDATE settings SET value=$1 WHERE id='store'", [
+    JSON.stringify({ ...original, demoMode: false, showSamples: true, salesEnabled: true }),
+  ]);
+  const slug = "audifonos-inalambricos-studio";
+  await db.query("UPDATE products SET status='draft' WHERE slug IN ($1, 'mouse-aceptacion')", [slug]);
+  try {
+    assert.equal(await productBySlug("mouse-aceptacion"), null);
+    const sample = await productBySlug(slug);
+    assert.ok(sample?.is_demo);
+    assert.ok(sample.variants.every(v => v.stock === 0 && v.reserved === 0));
+    const before = (await productBySlug(slug, true))!.variants;
+    const quote = await createQuote({ items: [{ variantId: sample.variants[0].id, quantity: 9 }] });
+    assert.match(new URL(quote.url).searchParams.get("text") || "", /\(muestra\).*Precio referencial/s);
+    assert.deepEqual((await productBySlug(slug, true))!.variants, before);
+    await db.query("UPDATE settings SET value=jsonb_set(value, '{showSamples}', 'false') WHERE id='store'");
+    assert.equal(await productBySlug(slug), null);
+    await assert.rejects(createQuote({ items: [{ variantId: sample.variants[0].id, quantity: 1 }] }), /disponible/);
+  } finally {
+    await db.query("UPDATE products SET status='published' WHERE slug IN ($1, 'mouse-aceptacion')", [slug]);
+    await db.query("UPDATE settings SET value=$1 WHERE id='store'", [JSON.stringify(original)]);
+  }
+});

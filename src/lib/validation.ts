@@ -111,6 +111,7 @@ export const settingsSchema = z
     whatsapp: z.string().regex(/^[1-9][0-9]{7,14}$/),
     tagline: text(160),
     demoMode: z.boolean(),
+    showSamples: z.boolean().default(true),
     salesEnabled: z.boolean(),
     legalName: text(160),
     ruc: z.union([z.literal(""), z.string().regex(/^\d{11}$/)]),

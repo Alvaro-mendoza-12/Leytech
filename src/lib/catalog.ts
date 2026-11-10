@@ -11,12 +11,29 @@ export async function settings(q: Queryable = db) {
   return {
     ...rows[0].value,
     orderChannel: rows[0].value.orderChannel || 'whatsapp',
+    showSamples: rows[0].value.showSamples ?? true,
     primaryColor: rows[0].value.primaryColor || "#2563eb",
     logoUrl: rows[0].value.logoUrl || "",
     heroImage: rows[0].value.heroImage || "/images/hero.jpg",
   };
 }
 export const cachedSettings = cache(() => settings());
+
+export function catalogVisibility(store: StoreSettings) {
+  return store.showSamples ? "samples" : store.demoMode ? "demo" : "published";
+}
+
+// Queries use the same product and category aliases in the catalog, detail and filter options.
+export function visibleProduct(parameter: string) {
+  return `c.active=true AND (
+    (p.status='published' AND (NOT p.is_demo OR ${parameter}::text <> 'published'))
+    OR (p.status='draft' AND p.is_demo AND ${parameter}::text = 'samples')
+  )`;
+}
+
+function publicVariants(variants: Variant[], sample: boolean) {
+  return sample ? variants.map(v => ({ ...v, stock: 0, reserved: 0, compare_at: null })) : variants;
+}
 export async function categories(all = false) {
   return (
     await db.query<Category>(
@@ -39,11 +56,10 @@ export async function products(
     featured?: boolean;
   } = {},
 ) {
-  const params: unknown[] = [];
+  const params: unknown[] = options.all ? [] : [catalogVisibility(await settings())];
   const where: string[] = [
-    options.all ? "true" : "p.status='published' AND c.active=true",
+    options.all ? "true" : visibleProduct("$1"),
   ];
-  if (!options.all && !(await settings()).demoMode) where.push('p.is_demo=false');
   const add = (sql: string, value: unknown) => {
     params.push(value);
     where.push(sql.replaceAll("?", `$${params.length}`));
@@ -64,7 +80,7 @@ export async function products(
   if (options.color) variantFilter("v.color=?", options.color);
   if (options.min != null) variantFilter("v.price>=?", options.min);
   if (options.max != null) variantFilter("v.price<=?", options.max);
-  if (options.offer) variantFilters.push("v.compare_at>v.price");
+  if (options.offer) variantFilters.push("NOT p.is_demo AND v.compare_at>v.price");
   if (!options.all || variantFilters.length > 2)
     where.push(
       `EXISTS(SELECT 1 FROM variants v WHERE ${variantFilters.join(" AND ")})`,
@@ -97,23 +113,23 @@ export async function products(
       )
     ).rows;
     rows.forEach((p) => {
-      p.variants = variants.filter((v) => v.product_id === p.id);
+      p.variants = publicVariants(variants.filter((v) => v.product_id === p.id), !options.all && p.is_demo);
     });
   }
   return { products: rows, total, page, pages: Math.ceil(total / limit) };
 }
 export async function productBySlug(slug: string, all = false) {
-  const hideExamples = !all && !(await settings()).demoMode;
+  const params = all ? [slug] : [slug, catalogVisibility(await settings())];
   const { rows } = await db.query<Product>(
-    `SELECT p.*, c.name AS category_name,c.slug AS category_slug FROM products p JOIN categories c ON c.id=p.category_id WHERE p.slug=$1 ${all ? "" : "AND p.status='published' AND c.active=true"} ${hideExamples ? 'AND p.is_demo=false' : ''}`,
-    [slug],
+    `SELECT p.*, c.name AS category_name,c.slug AS category_slug FROM products p JOIN categories c ON c.id=p.category_id WHERE p.slug=$1 ${all ? "" : `AND ${visibleProduct("$2")}`}`,
+    params,
   );
   if (!rows[0]) return null;
-  rows[0].variants = (
+  rows[0].variants = publicVariants((
     await db.query<Variant>(
       `SELECT * FROM variants WHERE product_id=$1 ${all ? "" : "AND active=true"} ORDER BY sku`,
       [rows[0].id],
     )
-  ).rows;
+  ).rows, !all && rows[0].is_demo);
   return rows[0];
 }

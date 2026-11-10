@@ -36,7 +36,7 @@ export function ProductDetail({
     [quote, setQuote] = useState<{ code: string; url: string; variantId: string; price: number; quantity: number } | null>(null);
   const cart = useCart();
   if (!v) return <p>Este producto no tiene variantes publicadas.</p>;
-  const available = v.stock - v.reserved;
+  const available = p.is_demo ? 99 : v.stock - v.reserved;
   const quantity = Math.max(1, Math.min(requestedQuantity, available, 99));
   async function quoteProduct() {
     setLoading(true);
@@ -72,7 +72,7 @@ export function ProductDetail({
             />
             {p.is_demo && (
               <span className="product-badge blue">
-                Producto de demostración
+                Producto de muestra
               </span>
             )}
           </div>
@@ -122,7 +122,7 @@ export function ProductDetail({
               {p.variants.map((i) => (
                 <button
                   key={i.id}
-                  className={`variant-option ${i.id === v.id ? "selected" : ""} ${i.stock - i.reserved === 0 ? "unavailable" : ""}`}
+                  className={`variant-option ${i.id === v.id ? "selected" : ""} ${!p.is_demo && i.stock - i.reserved === 0 ? "unavailable" : ""}`}
                   onClick={() => {
                     setVariantId(i.id);
                     setQuantity(1);
@@ -132,17 +132,17 @@ export function ProductDetail({
                 >
                   {i.color && <i style={{ background: i.color_hex }} />}
                   {i.name}
-                  {i.stock - i.reserved === 0 && <small>Agotado</small>}
+                  {!p.is_demo && i.stock - i.reserved === 0 && <small>Agotado</small>}
                 </button>
               ))}
             </div>
           </div>
-          <p className={`availability ${available ? "" : "sold-out"}`}>
+          {p.is_demo ? <p className="image-note">Precio referencial. Consulta disponibilidad por WhatsApp.</p> : <p className={`availability ${available ? "" : "sold-out"}`}>
             {available ? <Check size={17} /> : <span>×</span>}
             {available
               ? `${available} unidades disponibles`
               : "Esta variante está agotada"}
-          </p>
+          </p>}
           <div className="purchase-row">
             <div className="quantity">
               <button
@@ -190,6 +190,7 @@ export function ProductDetail({
                   image: v.image || p.images[0],
                   slug: p.slug,
                   max: available,
+                  isSample: p.is_demo,
                 })
               }
             >

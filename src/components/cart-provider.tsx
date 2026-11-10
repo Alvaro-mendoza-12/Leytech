@@ -15,6 +15,7 @@ export type StoredLine = CartLine & {
   slug: string;
   max: number;
   price: number;
+  isSample?: boolean;
 };
 type Context = {
   items: StoredLine[];
@@ -113,6 +114,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         image: i.image,
         slug: i.slug,
         max: i.available,
+        isSample: i.isDemo,
       }));
     });
   return (

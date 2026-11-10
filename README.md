@@ -12,17 +12,17 @@ Publicada en Vercel con PostgreSQL y almacenamiento privado de Supabase. El modo
 
 El acceso inicial de producción está en el archivo local privado `.data/production-admin-access.txt`, excluido de GitHub. Cambia la contraseña en Configuración → Seguridad al ingresar.
 
-1. En Catálogo → Productos puedes crear productos o editar los 12 borradores de ejemplo. Reemplaza fotos, descripción, precio, garantía y stock con los reales. Para publicar un ejemplo, confirma la revisión de sus datos en el paso Revisión y elige Publicar en la tienda.
+1. En Catálogo → Productos puedes crear productos o editar las 12 muestras. Para convertir una muestra en un producto real, revisa sus datos en el paso Revisión y elige Publicar en la tienda. Puedes ocultar las muestras desde Configuración → Negocio.
 2. Completa titular, RUC, dirección comercial y correo de atención en Configuración → Negocio. El propietario agregará estos datos desde el panel.
 3. Configura logo, color, portada, categorías, inventario, WhatsApp y políticas desde el panel. Los cambios de contenido no requieren desplegar código.
-4. El cliente añade productos al carrito y pulsa Comprar por WhatsApp. Se guarda un código y se prepara el mensaje; el cliente decide enviarlo. La solicitud no reserva stock ni confirma el pago.
-5. Atiende Ventas → Solicitudes de WhatsApp. Después del acuerdo puedes registrar el pedido y la entrega. La reserva dura 30 minutos. Confirma manualmente el ingreso del pago, con evidencia, antes de preparar la entrega.
+4. El visitante añade productos al carrito sin cuenta y pulsa Enviar carrito por WhatsApp. Se prepara un mensaje con código y productos para que el visitante lo envíe.
+5. Busca el código en Solicitudes → Solicitudes de WhatsApp. Después de responder en WhatsApp, puedes marcar la consulta como atendida o cerrada.
 
 El pago, el costo de envío y el plazo se acuerdan por WhatsApp. La web no solicita tarjetas ni requiere una pasarela de pagos. Las licencias digitales se entregan manualmente.
 
 La tienda y el panel comprueban cambios cada 10 segundos mientras la pestaña está visible. Al guardar productos, precios, stock o marca, la tienda abierta se actualiza sin recargar manualmente. Las solicitudes nuevas aparecen en el panel automáticamente. Cambia o restaura el logo desde **Configuración → Negocio**.
 
-El propietario cargará su catálogo real. Los ejemplos siguen como borradores editables y no representan inventario a la venta.
+El catálogo público distingue las muestras con una etiqueta y precios referenciales. Confirma su disponibilidad en WhatsApp.
 
 ## Desarrollo local
 

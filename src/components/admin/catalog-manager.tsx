@@ -121,8 +121,14 @@ export function CatalogManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {productList.map((p) => (
-                    <tr key={p.id}>
+                  {productList.map((p) => {
+                    const activeCategory = data.categories.some(c => c.id === p.category_id && c.active);
+                    const visible = activeCategory && p.variants.some(v => v.active) && (
+                      p.is_demo
+                        ? p.status !== "archived" && (data.settings.showSamples || (data.settings.demoMode && p.status === "published"))
+                        : p.status === "published"
+                    );
+                    return <tr key={p.id}>
                       <td>
                         <div className="table-product">
                           <img
@@ -133,7 +139,7 @@ export function CatalogManager({
                             <strong>{p.name}</strong>
                             <small>
                               {p.brand} · {p.category_name}
-                              {p.is_demo ? " · Ejemplo" : ""}
+                              {p.is_demo ? " · Muestra" : ""}
                             </small>
                           </div>
                         </div>
@@ -149,14 +155,14 @@ export function CatalogManager({
                         )}
                       </td>
                       <td>
-                        {p.variants
+                        {p.is_demo ? "Por consultar" : p.variants
                           .filter((v) => v.active)
                           .reduce((s, v) => s + v.stock - v.reserved, 0)}
                         <small>{p.variants.length} variantes</small>
                       </td>
                       <td>
-                        <span className={`badge ${p.status}`}>
-                          {statusLabel[p.status]}
+                        <span className={`badge ${visible ? "published" : p.status}`}>
+                          {visible && p.is_demo ? "Muestra visible" : statusLabel[p.status]}
                         </span>
                       </td>
                       <td>
@@ -179,10 +185,11 @@ export function CatalogManager({
                           >
                             <Copy size={15} />
                           </button>
-                          {p.status === "published" && (
+                          {visible && (
                             <a
                               href={`/producto/${p.slug}`}
                               target="_blank"
+                              rel="noreferrer"
                               className="icon-button"
                               title="Ver en tienda"
                               aria-label={`Ver ${p.name} en tienda`}
@@ -192,8 +199,8 @@ export function CatalogManager({
                           )}
                         </div>
                       </td>
-                    </tr>
-                  ))}
+                    </tr>;
+                  })}
                 </tbody>
               </table>
             </div>

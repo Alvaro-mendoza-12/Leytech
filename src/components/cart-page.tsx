@@ -264,11 +264,12 @@ export function CartPage({ revision }: { revision: string }) {
             {busy === "quote" ? (
               <LoaderCircle size={17} className="spin" />
             ) : null}
-            Comprar por WhatsApp <MessageCircle size={17} />
+            Enviar carrito por WhatsApp <MessageCircle size={17} />
           </button>
           <p className="summary-note">
-            Generamos un resumen con código y productos. Abre WhatsApp para acordar el pago y la entrega con Leytech. No se realiza ningún cobro en esta web.
+            Generamos un resumen con código y productos. Acuerda la compra, el pago y la entrega con Leytech directamente por WhatsApp.
           </p>
+          {cart.items.some(item => item.isSample) && <p className="summary-note">El carrito incluye productos de muestra. Sus precios son referenciales y su disponibilidad se consulta por WhatsApp.</p>}
         </aside>
       </div>
     </>

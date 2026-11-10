@@ -11,6 +11,7 @@ export async function seed(demo=true) {
     whatsapp: "51905886853",
     tagline: "Tecnología que va contigo.",
     demoMode: demo,
+    showSamples: !demo,
     salesEnabled: false,
     legalName: "",
     ruc: "",

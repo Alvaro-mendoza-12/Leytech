@@ -54,12 +54,13 @@ export function ProductCard({
             sizes="(max-width:600px) 50vw,(max-width:1000px) 33vw,25vw"
           />
         </Link>
-        {discount > 0 && (
+        {p.is_demo && <span className="product-badge blue">Muestra</span>}
+        {!p.is_demo && discount > 0 && (
           <span className="product-badge">
-            -{discount}%{p.is_demo ? " de ejemplo" : ""}
+            -{discount}%
           </span>
         )}
-        {p.type === "digital" && (
+        {!p.is_demo && p.type === "digital" && (
           <span className="product-badge blue">Digital</span>
         )}
       </div>
@@ -78,10 +79,10 @@ export function ProductCard({
               <Link
                 key={i.id}
                 href={`/producto/${p.slug}?variante=${i.id}`}
-                title={`${i.color}${i.stock - i.reserved === 0 ? " (agotado)" : ""}`}
+                title={`${i.color}${!p.is_demo && i.stock - i.reserved === 0 ? " (agotado)" : ""}`}
                 aria-label={`Ver ${p.name} en ${i.color}`}
                 style={{ background: i.color_hex }}
-                className={i.stock - i.reserved === 0 ? "out" : ""}
+                className={!p.is_demo && i.stock - i.reserved === 0 ? "out" : ""}
               />
             ))}
           {p.variants.length > 1 && <small>{p.variants.length} colores</small>}
@@ -95,7 +96,7 @@ export function ProductCard({
             className="quick-add"
             title={`Agregar ${p.name} (${v.name})`}
             aria-label={`Agregar ${p.name} al carrito`}
-            disabled={!stock}
+            disabled={!p.is_demo && !stock}
             onClick={() =>
               cart.add({
                 variantId: v.id,
@@ -105,17 +106,20 @@ export function ProductCard({
                 price: v.price,
                 image: v.image || p.images[0],
                 slug: p.slug,
-                max: v.stock - v.reserved,
+                max: p.is_demo ? 99 : v.stock - v.reserved,
+                isSample: p.is_demo,
               })
             }
           >
             <Plus size={20} />
           </button>
         </div>
-        <span className={`stock-label ${stock ? "" : "no-stock"}`}>
-          <span />
-          {stock ? "Disponible" : "Agotado"}
-        </span>
+        {p.is_demo ? <small className="image-note">Precio referencial · consulta disponibilidad</small> : (
+          <span className={`stock-label ${stock ? "" : "no-stock"}`}>
+            <span />
+            {stock ? "Disponible" : "Agotado"}
+          </span>
+        )}
       </div>
     </article>
   );
