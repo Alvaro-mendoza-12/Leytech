@@ -48,7 +48,8 @@ export async function products(
   };
   if (options.q)
     add(
-      "(p.name ILIKE ? OR p.brand ILIKE ? OR p.summary ILIKE ? OR c.name ILIKE ?)",
+      `translate(lower(concat_ws(' ', p.name, p.brand, p.summary, c.name)), 'áéíóúü', 'aeiouu')
+       LIKE translate(lower(?), 'áéíóúü', 'aeiouu')`,
       `%${options.q.slice(0, 120)}%`,
     );
   if (options.category) add("c.slug=?", options.category);

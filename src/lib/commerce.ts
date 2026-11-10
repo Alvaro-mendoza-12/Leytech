@@ -75,6 +75,10 @@ export function whatsappMessage(
 export async function createQuote(input: unknown) {
   await expireOrders();
   return db.transaction(async (tx) => {
+    const config = await settings(tx);
+    if (config.orderChannel === "whatsapp" && !config.demoMode && !config.salesEnabled) {
+      throw new AppError("Leytech pausó las solicitudes de compra. Escríbenos por WhatsApp si tienes preguntas.", 409);
+    }
     const items = await snapshot(input, tx);
     if (items.some((i) => i.priceChanged))
       throw new AppError(
@@ -92,7 +96,6 @@ export async function createQuote(input: unknown) {
       [id, JSON.stringify(items), subtotal],
     );
     const code = quoteCode(rows[0].code);
-    const config = await settings(tx);
     return {
       code,
       subtotal,

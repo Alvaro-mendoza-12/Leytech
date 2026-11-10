@@ -362,9 +362,9 @@ export function SettingsManager({
                       onChange={(e) => update("salesEnabled", e.target.checked)}
                     />
                     <span>
-                      <strong>Atender ventas por WhatsApp</strong>
+                        <strong>Recibir solicitudes de compra por WhatsApp</strong>
                       <small>
-                        Los clientes envían el carrito por WhatsApp. Confirmas la compra, el pago y la entrega personalmente. Los productos de ejemplo deben duplicarse y configurarse antes de publicarlos como reales.
+                          El carrito genera una solicitud para enviar por WhatsApp. Si pausas esta opción, puedes seguir atendiendo las solicitudes guardadas.
                       </small>
                     </span>
                   </label>

@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { productBySlug, products, settings } from "@/lib/catalog";
 import { ProductDetail } from "@/components/product-detail";
 import { ProductGrid } from "@/components/store-ui";
+import { siteUrl } from "@/lib/site";
 export async function generateMetadata({
   params,
 }: {
@@ -29,6 +30,7 @@ export default async function ProductPage({
     settings(),
     searchParams,
   ]);
+  const origin = siteUrl();
   return (
     <div className="container page-container">
       <nav aria-label="Ruta de navegación" className="breadcrumbs">
@@ -56,7 +58,7 @@ export default async function ProductPage({
               name: p.name,
               description: p.summary,
               image: p.images.map(
-                (i) => `${process.env.NEXT_PUBLIC_SITE_URL || ""}${i}`,
+                (i) => `${origin}${i}`,
               ),
               brand: { "@type": "Brand", name: p.brand },
               offers: p.variants.map((v) => ({
@@ -65,7 +67,7 @@ export default async function ProductPage({
                 price: (v.price / 100).toFixed(2),
                 priceCurrency: "PEN",
                 availability: `https://schema.org/${v.stock - v.reserved > 0 ? "InStock" : "OutOfStock"}`,
-                url: `${process.env.NEXT_PUBLIC_SITE_URL || ""}/producto/${p.slug}`,
+                url: `${origin}/producto/${p.slug}`,
               })),
             }).replace(/</g, "\u003c"),
           }}

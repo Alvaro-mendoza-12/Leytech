@@ -238,6 +238,7 @@ test("administración: crea y publica un producto con tres colores y stock indep
 });
 test("búsqueda por nombre, marca y categoría con consultas parametrizadas", async () => {
   assert.equal((await products({ q: "aceptación" })).total, 1);
+  assert.equal((await products({ q: "aceptacion" })).total, 1);
   assert.equal((await products({ q: "Prueba" })).total, 1);
   assert.ok((await products({ q: "audio" })).total >= 2);
   assert.equal((await products({ q: "'; DROP TABLE products; --" })).total, 0);
@@ -510,6 +511,9 @@ test('WhatsApp en producción: oculta ejemplos y registra pedidos acordados sin 
   await assert.rejects(snapshot({items:[{variantId:'demo-1-v1',quantity:1}]}),/ejemplo/);
   const product=await productBySlug('mouse-aceptacion');assert.ok(product);
   const variant=product.variants.find(v=>v.sku==='ACEPT-NEGRO')!;
+  await db.query("UPDATE settings SET value=jsonb_set(value, '{salesEnabled}', 'false') WHERE id='store'");
+  await assert.rejects(createQuote({items:[{variantId:variant.id,quantity:1}]}),/pausó las solicitudes/);
+  await db.query("UPDATE settings SET value=jsonb_set(value, '{salesEnabled}', 'true') WHERE id='store'");
   await assert.rejects(createOrder({...orderInput(variant.id),customer:{...customer,email:''}}),/WhatsApp/);
   const quote=await createQuote({items:[{variantId:variant.id,quantity:2}]});
   assert.ok(quote.url.startsWith('https://wa.me/51905886853'));

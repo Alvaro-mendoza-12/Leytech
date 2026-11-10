@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Eye, MessageCircle, Search } from "lucide-react";
+import { Copy, Eye, MessageCircle, Search } from "lucide-react";
 import { money, date, orderCode, quoteCode, statusLabel } from "@/lib/format";
 import type { Order } from "@/lib/types";
 import { adminApi, type AdminData, type Quote, type Claim } from "./api";
@@ -409,6 +409,21 @@ export function SalesManager({
             {date(selected.expires_at)} · Medio: {selected.method} · Entrega:{" "}
             {statusLabel[selected.fulfillment]}
           </p>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={async () => {
+              const link = new URL(`/pedido/${selected.public_token}`, window.location.origin);
+              try {
+                await navigator.clipboard.writeText(link.href);
+                notify("Enlace del pedido copiado para compartir con el cliente");
+              } catch {
+                window.open(link.href, "_blank", "noopener,noreferrer");
+              }
+            }}
+          >
+            <Copy size={15} /> Copiar enlace para el cliente
+          </button>
           {["pending", "paid"].includes(selected.status) && (
             <form onSubmit={action} style={{ marginTop: 22 }}>
               <div className="form-grid">
