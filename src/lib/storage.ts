@@ -1,0 +1,48 @@
+import { AppError } from "./security";
+function storageConfig() {
+  const base = process.env.STORAGE_SUPABASE_URL,
+    key = process.env.STORAGE_SERVICE_ROLE_KEY,
+    bucket = process.env.STORAGE_BUCKET || "leytech-products";
+  if (
+    !base ||
+    !key ||
+    !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(base) ||
+    !/^[a-z0-9-]{1,100}$/.test(bucket)
+  )
+    throw new AppError(
+      "Configura Supabase Storage privado para guardar imágenes en producción.",
+      503,
+    );
+  return { base, key, bucket };
+}
+export async function uploadObject(
+  name: string,
+  buffer: Buffer,
+  contentType: string,
+) {
+  const { base, key, bucket } = storageConfig();
+  const res = await fetch(`${base}/storage/v1/object/${bucket}/${name}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      apikey: key,
+      "Content-Type": contentType,
+      "x-upsert": "false",
+    },
+    body: new Uint8Array(buffer),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok)
+    throw new AppError(
+      "No se pudo guardar la imagen en el almacenamiento.",
+      502,
+    );
+  return `/media/${name}`;
+}
+export async function downloadObject(name: string) {
+  const { base, key, bucket } = storageConfig();
+  return fetch(`${base}/storage/v1/object/authenticated/${bucket}/${name}`, {
+    headers: { Authorization: `Bearer ${key}`, apikey: key },
+    signal: AbortSignal.timeout(15000),
+  });
+}
