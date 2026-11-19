@@ -13,6 +13,7 @@
   padding: 0; list-style: none; color: var(--muted); font-size: .83rem;
 }
 .requirements li { display: flex; align-items: center; gap: 7px; }
+.intro .version { margin-bottom: 0; font-size: .83rem; }
 .voice {
   display: grid; align-content: center; justify-items: start; gap: 22px;
   padding: clamp(26px, 5vw, 62px); color: white; background: #101d39;

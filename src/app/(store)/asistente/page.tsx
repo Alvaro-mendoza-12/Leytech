@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Download, Headphones, Laptop, Mic, Volume2 } from "lucide-react";
-import { assistantDownloadUrl } from "@/lib/assistant-download";
+import { assistantDownloadUrl, assistantReleaseVersion } from "@/lib/assistant-download";
 import { cachedSettings } from "@/lib/catalog";
 import { publicMetadata } from "@/lib/seo";
 import { WhatsAppIcon } from "@/components/icons";
@@ -37,6 +37,7 @@ export default async function AssistantPage() {
             <li><Laptop size={16} aria-hidden="true" /> Windows 10 u 11 x64</li>
             <li><Headphones size={16} aria-hidden="true" /> Auriculares y micrófono</li>
           </ul>
+          <p className={styles.version}>Versión {assistantReleaseVersion()}</p>
         </div>
         <div className={styles.voice} aria-label="Ejemplo de comando de voz">
           <div className={styles.voiceIcon}><Mic size={34} aria-hidden="true" /></div>
