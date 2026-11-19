@@ -73,7 +73,7 @@ const subtitles: Record<string, string> = {
   resumen: "Todo lo que pasa en tu negocio, en un lugar.",
   catalogo: "Tus productos y su disponibilidad, siempre al día.",
   ventas: "Organiza las consultas que los visitantes preparan para WhatsApp.",
-  licencias: "Genera códigos de activación y consulta quién atendió cada compra.",
+  licencias: "Genera licencias de un solo uso y consulta cuáles se activaron.",
   marketing: "Dale a tu tienda una voz propia.",
   configuracion: "Los detalles que hacen funcionar tu negocio.",
 };

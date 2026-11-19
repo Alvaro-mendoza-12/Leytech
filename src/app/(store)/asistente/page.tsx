@@ -18,7 +18,7 @@ export async function generateMetadata() {
 export default async function AssistantPage() {
   const store = await cachedSettings();
   const download = assistantDownloadUrl();
-  const message = "Hola, quiero activar Leytech Asistente.\nMi referencia de compra: ";
+  const message = "Hola, quiero pedir una licencia para activar Leytech Asistente.";
   const whatsapp = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(message)}`;
 
   return (
@@ -54,7 +54,7 @@ export default async function AssistantPage() {
         </div>
         <ol>
           <li><strong>Instala y abre el asistente</strong> en el equipo donde quieres usarlo.</li>
-          <li><strong>Solicita tu código por WhatsApp.</strong> Envía la referencia de tu compra.</li>
+          <li><strong>Solicita tu código por WhatsApp.</strong></li>
           <li><strong>Pega el código que recibas</strong> y pulsa «Activar». Solo puedes canjearlo una vez.</li>
         </ol>
       </section>

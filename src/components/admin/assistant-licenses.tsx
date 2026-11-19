@@ -1,22 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, KeyRound } from "lucide-react";
 import { date } from "@/lib/format";
 import { adminApi } from "./api";
 
-type Entry = { reference: string; redeemed_at: string | null; email: string; created_at: string };
+type Entry = { id: string; redeemed_at: string | null; email: string; created_at: string };
 type History = { enabled: boolean; entries: Entry[] };
-type Issued = { code: string; reference: string; created: boolean };
+type Issued = { code: string };
 
 export function AssistantLicenses({ notify }: { notify: (message: string) => void }) {
   const [history, setHistory] = useState<History>();
   const [loadError, setLoadError] = useState("");
-  const [reference, setReference] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
   const [issuing, setIssuing] = useState(false);
   const [issued, setIssued] = useState<Issued>();
   const [issueError, setIssueError] = useState("");
+  const pendingRequest = useRef<string | null>(null);
+  const submitting = useRef(false);
 
   const reload = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -36,29 +36,31 @@ export function AssistantLicenses({ notify }: { notify: (message: string) => voi
     return () => controller.abort();
   }, [reload]);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function generate() {
+    if (submitting.current) return;
+    submitting.current = true;
     setIssuing(true);
     setIssueError("");
-    setIssued(undefined);
     try {
-      const result: Issued = await adminApi("assistant-licenses", { reference, confirmed });
+      pendingRequest.current ??= crypto.randomUUID();
+      const result: Issued = await adminApi("assistant-licenses", { requestId: pendingRequest.current });
       setIssued(result);
+      pendingRequest.current = null;
       void reload();
     } catch (error) {
       setIssueError(error instanceof Error ? error.message : "No se pudo emitir la licencia.");
     } finally {
+      submitting.current = false;
       setIssuing(false);
     }
   }
 
-  async function copyMessage() {
-    if (!issued) return;
+  async function copyLicense() {
+    if (!issued || issuing) return;
     try {
-      await navigator.clipboard.writeText(
-        `Tu código de Leytech Asistente es:\n${issued.code}\n\nPégalo en el asistente y pulsa «Activar». Úsalo en el equipo donde quieres instalarlo.`,
-      );
-      notify("Mensaje copiado para pegar en WhatsApp.");
+      await navigator.clipboard.writeText(issued.code);
+      setIssueError("");
+      notify("Licencia copiada. Ya puedes enviarla por WhatsApp.");
     } catch {
       setIssueError("Selecciona el código y cópialo manualmente.");
     }
@@ -67,36 +69,24 @@ export function AssistantLicenses({ notify }: { notify: (message: string) => voi
   return (
     <>
       <section className="admin-panel" aria-labelledby="emitir-licencia">
-        <div className="admin-panel-heading"><h2 id="emitir-licencia">Emitir código para Windows</h2></div>
+        <div className="admin-panel-heading"><h2 id="emitir-licencia">Licencia para Windows</h2></div>
         <div className="admin-panel-body">
           {loadError && <p role="alert">{loadError} <button className="btn btn-outline" onClick={() => void reload()}>Reintentar</button></p>}
           {!history && !loadError && <p role="status">Cargando emisión de licencias…</p>}
           {history?.enabled === false && <p role="status">La emisión todavía no está habilitada en este sitio.</p>}
           {history?.enabled && (
-            <form className="assistant-license-form" onSubmit={submit}>
-              <div className="assistant-license-fields">
-                <label>Referencia de compra
-                  <input required placeholder="COT-00001 o PED-00001" maxLength={22} autoComplete="off"
-                    value={reference} onChange={event => { setReference(event.target.value); setConfirmed(false); setIssued(undefined); }} />
-                </label>
-              </div>
-              <label className="assistant-license-confirm">
-                <input type="checkbox" required checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />
-                Verifiqué el pago y que esta compra incluye el asistente.
-              </label>
-              <button className="btn btn-primary" disabled={issuing || !confirmed}>
-                <KeyRound size={17} aria-hidden="true" /> {issuing ? "Generando…" : "Generar código"}
-              </button>
-            </form>
+            <button type="button" className="btn btn-primary" disabled={issuing} onClick={generate}>
+              <KeyRound size={17} aria-hidden="true" /> {issuing ? "Generando…" : "Generar licencia"}
+            </button>
           )}
           {issued && (
             <div className="assistant-license-result">
-              <p role="status">{issued.created ? "Código generado." : "Código recuperado."} Cópialo y pégalo en el chat del comprador.</p>
+              <p role="status">Copia la licencia y envíala por WhatsApp.</p>
               <label>Código de activación
                 <input readOnly value={issued.code} onFocus={event => event.target.select()} />
               </label>
-              <button type="button" className="btn btn-outline" onClick={copyMessage}>
-                <Copy size={16} aria-hidden="true" /> Copiar mensaje para WhatsApp
+              <button type="button" className="btn btn-outline" disabled={issuing} onClick={copyLicense}>
+                <Copy size={16} aria-hidden="true" /> Copiar licencia
               </button>
             </div>
           )}
@@ -110,10 +100,9 @@ export function AssistantLicenses({ notify }: { notify: (message: string) => voi
             {history.entries.length ? (
               <div className="table-scroll">
                 <table>
-                  <thead><tr><th>Compra</th><th>Estado</th><th>Emitida por</th><th>Fecha de emisión</th></tr></thead>
+                  <thead><tr><th>Estado</th><th>Emitida por</th><th>Fecha de emisión</th></tr></thead>
                   <tbody>{history.entries.map(entry => (
-                    <tr key={entry.reference}>
-                      <td>{entry.reference}</td>
+                    <tr key={entry.id}>
                       <td>{entry.redeemed_at ? `Usado · ${date(entry.redeemed_at)}` : "Sin usar"}</td>
                       <td>{entry.email}</td><td>{date(entry.created_at)}</td>
                     </tr>
