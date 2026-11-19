@@ -1,0 +1,46 @@
+.page { padding-block: clamp(24px, 5vw, 54px) clamp(36px, 8vw, 88px); }
+.hero {
+  display: grid; grid-template-columns: 1.35fr 1fr; overflow: hidden;
+  border: 1px solid #e0e8f5; border-radius: 24px; background: #f5f8fe;
+}
+.intro { padding: clamp(24px, 5vw, 62px); align-self: center; }
+.back { color: var(--muted); font-weight: 750; font-size: .85rem; }
+.intro h1 { margin: .58em 0 .32em; font-size: clamp(2.3rem, 5.3vw, 4.8rem); line-height: 1.04; letter-spacing: -.06em; }
+.intro p, .activation p { color: var(--muted); max-width: 46ch; font-size: 1rem; }
+.intro a[class*="btn"] { margin-top: 12px; }
+.requirements {
+  display: flex; flex-wrap: wrap; gap: 9px 18px; margin: 19px 0 0;
+  padding: 0; list-style: none; color: var(--muted); font-size: .83rem;
+}
+.requirements li { display: flex; align-items: center; gap: 7px; }
+.voice {
+  display: grid; align-content: center; justify-items: start; gap: 22px;
+  padding: clamp(26px, 5vw, 62px); color: white; background: #101d39;
+  border-left: 1px solid #26395c;
+}
+.voiceIcon {
+  display: grid; place-items: center; width: 68px; aspect-ratio: 1;
+  border: 1px solid #7dabe9; border-radius: 50%; color: #d7e7ff;
+  background: #1a335e; box-shadow: 0 0 0 9px #1a335e66;
+}
+.voice p { margin: 0; font-size: clamp(1.5rem, 3vw, 2.95rem); font-weight: 760; line-height: 1.15; letter-spacing: -.04em; }
+.response { display: flex; gap: 9px; align-items: center; color: #b9d4fa; }
+.activation {
+  margin-top: clamp(25px, 5vw, 54px); display: grid; grid-template-columns: 1fr 1.1fr;
+  gap: clamp(18px, 5vw, 70px); padding: clamp(22px, 4vw, 48px);
+  border: 1px solid var(--line); border-radius: 20px;
+}
+.activation h2 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.2rem); line-height: 1.2; letter-spacing: -.04em; }
+.activation ol { margin: 0; padding-left: 1.5em; display: grid; align-content: start; gap: 14px; color: var(--muted); }
+.activation li { padding: 0 0 12px .3em; border-bottom: 1px solid var(--line); }
+.activation li:last-child { padding-bottom: 0; border-bottom: 0; }
+.activation li::marker, .activation strong { color: var(--ink); font-weight: 800; }
+.activation a svg { width: 18px; height: 18px; }
+.unavailable { font-weight: 760; }
+@media (max-width: 720px) {
+  .hero, .activation { grid-template-columns: 1fr; }
+  .voice { border: 0; grid-template-columns: auto 1fr; gap: 14px 18px; align-items: center; }
+  .voiceIcon { width: 52px; }
+  .voiceIcon svg { width: 26px; }
+  .response { grid-column: 2; }
+}

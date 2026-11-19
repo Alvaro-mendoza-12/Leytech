@@ -20,6 +20,20 @@
   --max: 1240px;
   --font: "Leytech Sans", Arial, Helvetica, sans-serif;
 }
+.assistant-license-form { display: grid; gap: 16px; justify-items: start; }
+.assistant-license-fields { width: min(100%, 370px); }
+.assistant-license-fields label, .assistant-license-result label { display: grid; min-width: 0; gap: 6px; font-weight: 700; }
+.assistant-license-fields input, .assistant-license-result input { width: 100%; }
+.assistant-license-confirm { display: flex; align-items: flex-start; gap: 9px; }
+.assistant-license-confirm input { margin-top: 3px; }
+.assistant-license-result { max-width: 780px; margin-top: 20px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.assistant-license-result p { margin-top: 0; }
+.assistant-license-result .btn { margin-top: 12px; }
+.assistant-license-history { margin-top: 18px; }
+.assistant-license-history .table-scroll { overflow-x: auto; }
+.assistant-license-error { color: #a42333; font-weight: 700; }
+@media (max-width: 680px) { .nav-bar.nav-with-assistant .nav-new { display: none; } }
+@media (max-width: 420px) { .nav-bar.nav-with-assistant .nav-gaming { display: none; } }
 * {
   box-sizing: border-box;
 }

@@ -33,6 +33,7 @@ import { markChanged, readRevision } from "@/lib/revisions";
 import { addSupabaseAdmin, authenticateAdmin } from "@/lib/panel-auth";
 import { confirmedSupabaseUser, publicSignupDisabled } from "@/lib/supabase-auth";
 import { notifyIndexNow } from "@/lib/indexing";
+import { assistantLicenseInput, assistantRedeemInput, issueAssistantLicense, listAssistantLicenses, redeemAssistantLicense } from "@/lib/assistant-licenses";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +60,11 @@ async function route(
       await requireOnlineOrders();
       await handleWebhook(request);
       return ok({ received: true });
+    }
+    if (resource === "assistant/redeem" && method === "POST") {
+      // This is a native client endpoint. It does not use session cookies.
+      await rateLimit(request, "assistant-redeem", 40, 60);
+      return ok(await redeemAssistantLicense(assistantRedeemInput.parse(await jsonBody(request))));
     }
     if (method !== "GET") checkOrigin(request);
     if (resource === "store/revision" && method === "GET") {
@@ -208,6 +214,15 @@ async function route(
     }
     if (!resource.startsWith("admin/"))
       throw new AppError("Ruta no encontrada.", 404);
+    if (resource === "admin/assistant-licenses" && method === "GET") {
+      return ok(await listAssistantLicenses());
+    }
+    if (resource === "admin/assistant-licenses" && method === "POST") {
+      await rateLimit(request, "assistant-licenses", 35, 60, admin.id);
+      const input = assistantLicenseInput.parse(await jsonBody(request));
+      const result = await issueAssistantLicense(input, admin);
+      return ok(result, result.created ? 201 : 200);
+    }
     if (resource === "admin/data" && method === "GET") {
       await expireOrders();
       const revision = await readRevision("admin");

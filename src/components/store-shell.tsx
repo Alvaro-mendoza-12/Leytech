@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   BookOpen,
+  Download,
 } from "lucide-react";
 import type { Category, StoreSettings } from "@/lib/types";
 import { CartLink } from "./store-ui";
@@ -17,6 +18,7 @@ import { BrandLogo } from "./brand-logo";
 import { CatalogSearch } from "./catalog-search";
 import { officialTikTok } from "@/lib/brand";
 import { MotionToggle } from "./motion-preference";
+import { assistantDownloadUrl } from "@/lib/assistant-download";
 export function StoreHeader({
   settings: s,
   categories,
@@ -28,6 +30,7 @@ export function StoreHeader({
   revision: string;
   offers: boolean;
 }) {
+  const assistant = assistantDownloadUrl();
   return (
     <>
       <a className="skip-link" href="#contenido">
@@ -68,7 +71,7 @@ export function StoreHeader({
           </a>
           <CartLink />
         </div>
-        <nav className="container nav-bar" aria-label="Navegación principal">
+        <nav className={`container nav-bar${assistant ? " nav-with-assistant" : ""}`} aria-label="Navegación principal">
           <details className="category-menu">
             <summary>
               <Menu size={18} /> Todas las categorías <ChevronDown size={14} />
@@ -83,11 +86,12 @@ export function StoreHeader({
             </div>
           </details>
           <Link href="/catalogo">Todo el catálogo</Link>
-          <Link href="/catalogo?sort=newest">Lo nuevo</Link>
-          <Link href="/catalogo?categoria=gaming">Zona gaming</Link>
+          <Link href="/catalogo?sort=newest" className="nav-new">Lo nuevo</Link>
+          <Link href="/catalogo?categoria=gaming" className="nav-gaming">Zona gaming</Link>
           <Link href="/catalogo?ofertas=1" className="nav-offers">
             Ofertas {offers && <span className="small-dot" aria-hidden="true" />}
           </Link>
+          {assistant && <Link href="/asistente" className="nav-offers"><Download size={15} aria-hidden="true" /> Asistente</Link>}
           <Link href="/informacion/ayuda" className="nav-last">
             Te ayudamos a elegir <ArrowUpRight size={14} />
           </Link>
@@ -130,6 +134,7 @@ export function StoreFooter({ settings: s }: { settings: StoreSettings }) {
           <Link href="/catalogo">Todos los productos</Link>
           <Link href="/catalogo?categoria=gaming">Zona gaming</Link>
           <Link href="/catalogo?ofertas=1">Ofertas</Link>
+          {assistantDownloadUrl() && <Link href="/asistente">Asistente para Windows</Link>}
           <Link href="/informacion/nosotros">Sobre nosotros</Link>
         </div>
         <div>

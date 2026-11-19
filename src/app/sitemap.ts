@@ -3,6 +3,7 @@ import { settings } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import {siteUrl} from '@/lib/site';
 import { publicInfo } from "@/lib/seo";
+import { assistantDownloadUrl } from "@/lib/assistant-download";
 export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl(),
@@ -16,6 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: `${base}/` },
     { url: `${base}/catalogo` },
+    ...(assistantDownloadUrl() ? [{ url: `${base}/asistente` }] : []),
     ...Object.keys(publicInfo).map(slug => ({ url: `${base}/informacion/${slug}` })),
     { url: `${base}/reclamaciones` },
     ...[...new Set(rows.map(p => p.category))].map(slug => ({ url: `${base}/catalogo?categoria=${encodeURIComponent(slug)}` })),

@@ -15,12 +15,14 @@ import {
   TriangleAlert,
   Activity,
   RefreshCw,
+  KeyRound,
 } from "lucide-react";
 import { quoteCode, date } from "@/lib/format";
 import { useCart } from "@/components/cart-provider";
 import { CatalogManager } from "./catalog-manager";
 import { SalesManager, quoteStatusLabels } from "./sales-manager";
 import { SettingsManager } from "./settings-manager";
+import { AssistantLicenses } from "./assistant-licenses";
 import type { AdminData } from "./api";
 import { BrandLogo } from "../brand-logo";
 import { useVisiblePolling } from "../use-visible-polling";
@@ -38,6 +40,7 @@ const menu = [
     icon: ShoppingBag,
     tabs: ["cotizaciones", "reclamaciones"],
   },
+  { id: "licencias", label: "Licencias", icon: KeyRound, tabs: [] },
   { id: "marketing", label: "Marketing", icon: Megaphone, tabs: ["inicio"] },
   {
     id: "configuracion",
@@ -70,6 +73,7 @@ const subtitles: Record<string, string> = {
   resumen: "Todo lo que pasa en tu negocio, en un lugar.",
   catalogo: "Tus productos y su disponibilidad, siempre al día.",
   ventas: "Organiza las consultas que los visitantes preparan para WhatsApp.",
+  licencias: "Genera códigos de activación y consulta quién atendió cada compra.",
   marketing: "Dale a tu tienda una voz propia.",
   configuracion: "Los detalles que hacen funcionar tu negocio.",
 };
@@ -373,6 +377,7 @@ export function Dashboard() {
                                       (
                                         {
                                           "user.created": "Usuario creado",
+                                          "assistant.license_issued": "Licencia del asistente emitida",
                                           "user.updated":
                                             "Acceso de usuario actualizado",
                                           "category.saved":
@@ -469,6 +474,7 @@ export function Dashboard() {
                     notify={setNotice}
                   />
                 )}
+                {section === "licencias" && <AssistantLicenses notify={setNotice} />}
                 {(section === "marketing" || section === "configuracion") && (
                   <SettingsManager
                     key={section + tab}

@@ -8,4 +8,5 @@ output
 .playwright-cli
 public/uploads/*
 !public/uploads/.gitkeep
+public/descargas/*.exe
 *.tsbuildinfo
