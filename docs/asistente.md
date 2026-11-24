@@ -21,3 +21,7 @@ El registro muestra quién emitió cada licencia y cuándo se canjeó. El panel 
 5. Verifica en una vista previa la descarga, el acceso con una cuenta de personal y la activación con el instalador asociado a la clave. Publica los cambios en el proyecto Vercel de Leytech cuando se apruebe la revisión.
 
 Para una prueba local, coloca el instalador de revisión en `public/descargas/Leytech-Asistente-Windows-x64.exe` y usa esa ruta en `LEYTECH_ASSISTANT_DOWNLOAD_URL`. El ejecutable local queda excluido de Git y de la subida de Vercel.
+
+## Código fuente de escritorio
+
+La versión de desarrollo actual está en [asistente/](../asistente/). Consulta [las funciones, exclusiones y pasos de publicación](asistente-codigo.md). Esta entrega no modifica el instalador publicado ni el manifiesto de descarga.

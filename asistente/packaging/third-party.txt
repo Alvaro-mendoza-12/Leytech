@@ -1,0 +1,19 @@
+AVISOS DE COMPONENTES DE TERCEROS
+
+Los componentes de terceros se distribuyen bajo sus propias licencias.
+Los avisos disponibles en los paquetes de compilación están en esta carpeta.
+
+Modelo de voz español vosk-model-small-es-0.42
+Copyright 2022-2050 AC Technologies LLC. Apache License 2.0.
+https://alphacephei.com/vosk/models
+https://www.apache.org/licenses/LICENSE-2.0
+
+La distribución incluye python-vlc, LibVLC y los complementos de audio de VLC.
+Consulta VLC-COPYING.txt y los avisos de python-vlc para sus licencias.
+Las bibliotecas y complementos se encuentran en _internal/vlc y permanecen
+separados del ejecutable para permitir su sustitución por versiones compatibles.
+Código fuente y documentación de VLC: https://www.videolan.org/vlc/
+
+Modelo inglés vosk-model-small-en-us-0.15, Apache License 2.0.
+https://alphacephei.com/vosk/models
+https://www.apache.org/licenses/LICENSE-2.0
